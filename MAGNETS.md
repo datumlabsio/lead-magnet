@@ -27,18 +27,64 @@ non-technical person needs every time a new magnet is launched.
 
 ### HubSpot (optional)
 
-1. Settings → Integrations → Private Apps → **Create a private app**.
-2. On the Scopes tab, grant all three:
-   - `crm.objects.contacts.write` — required, creates and updates the contact
-   - `crm.objects.contacts.read` — lets `pnpm run doctor` verify the token
-   - `crm.schemas.contacts.read` — lets the doctor check the custom property
-3. Create, then copy the access token into `HUBSPOT_PRIVATE_APP_TOKEN`.
-4. If you want to segment by which magnet a contact came from, create a custom
-   contact property `lead_magnet_source` (single-line text).
+You need Super Admin, or an account with the **Private apps** permission.
 
 It has to be a **private app token**. A HubSpot *personal access key* is for the
 `hs` CLI and will not authenticate these calls, and legacy `hapikey` API keys
 were sunset in 2022.
+
+#### A. Create the private app
+
+1. Click the **settings gear**, top right of HubSpot.
+2. Left sidebar → **Integrations** → **Private Apps**.
+3. **Create a private app**.
+4. *Basic Info* tab → name it something recognisable, e.g. `Lead Magnet Delivery`.
+5. *Scopes* tab → search for and tick all three:
+
+   | Scope | Why |
+   |---|---|
+   | `crm.objects.contacts.write` | Required — creates and updates the contact |
+   | `crm.objects.contacts.read` | Lets `pnpm run doctor` verify the token |
+   | `crm.schemas.contacts.read` | Lets the doctor check the custom property |
+
+6. **Create app**, top right → **Continue creating** in the dialog.
+7. **Show token** → copy it.
+8. Paste into `.env.local` as `HUBSPOT_PRIVATE_APP_TOKEN=`, and add the same
+   value in Vercel → Project Settings → Environment Variables.
+
+The token is shown in full whenever you reopen the app, so there is no need to
+store a copy anywhere else. Do not paste it into a chat, a ticket, or the repo.
+
+#### B. Create the lead_magnet_source property
+
+Only needed if you want to segment in HubSpot by which magnet a contact came
+from. Skip it and remove `hubspot.source` from the magnet configs instead.
+
+1. Settings gear → **Data Management** → **Properties**.
+2. Set the object selector to **Contact properties**.
+3. **Create property**.
+4. Group: *Contact information*. Label: `Lead magnet source`.
+5. **Check the internal name.** HubSpot derives it from the label, and the code
+   looks for exactly `lead_magnet_source`. Click the internal-name edit control
+   and confirm it — a mismatch here fails the sync for every lead, and it is the
+   single most common mistake in this setup.
+6. Field type: **Single-line text**. Create.
+
+#### C. Verify
+
+```bash
+pnpm run doctor
+```
+
+It confirms the token is accepted, has contact access, and that
+`lead_magnet_source` exists — and distinguishes "property missing" from "scope
+missing", which have different fixes.
+
+> **Lifecycle stage note.** The sample config sets `lifecycleStage: "lead"`.
+> HubSpot will not move a contact's lifecycle stage *backwards* by default, so
+> an existing customer who downloads a magnet keeps their current stage. That is
+> usually what you want. If it is not, there is an account setting to allow
+> backwards transitions — change it deliberately, not by accident.
 
 Leave HubSpot unconfigured and everything else still works — leads land in
 Supabase and still get their email.
