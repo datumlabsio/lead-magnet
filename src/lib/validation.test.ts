@@ -120,3 +120,42 @@ describe("payload coercion", () => {
     expect(parsed.success).toBe(false);
   });
 });
+
+describe("null answers", () => {
+  it("accepts null, which is how a page reports no answer", () => {
+    // The Vero estimator sends breakeven_month: null when there is no
+    // break-even inside 36 months, so this failed for some answers only.
+    const parsed = submissionSchema.parse({
+      magnet: "test",
+      data: { email: "a@b.com", first_name: "Sam", breakeven_month: null },
+      utm: {},
+    });
+    expect(parsed.data.breakeven_month).toBe("");
+  });
+
+  it("treats a null answer as absent rather than storing an empty field", () => {
+    const magnetWithOptional: MagnetConfig = {
+      ...magnet,
+      fields: [
+        { name: "first_name", label: "First name", required: true, maxLength: 10 },
+        { name: "breakeven_month", label: "Break-even month" },
+      ],
+    };
+    const parsed = submissionSchema.parse({
+      magnet: "test",
+      data: { email: "a@b.com", first_name: "Sam", breakeven_month: null },
+      utm: {},
+    });
+    const result = validateSubmission(magnetWithOptional, parsed);
+    expect(result.ok && "breakeven_month" in result.fields).toBe(false);
+  });
+
+  it("still accepts a real break-even value", () => {
+    const parsed = submissionSchema.parse({
+      magnet: "test",
+      data: { email: "a@b.com", breakeven_month: 4 },
+      utm: {},
+    });
+    expect(parsed.data.breakeven_month).toBe("4");
+  });
+});

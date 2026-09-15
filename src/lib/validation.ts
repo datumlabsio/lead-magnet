@@ -19,9 +19,14 @@ import type { MagnetConfig } from "@/magnets/types";
  * business instead of ours: every scalar is accepted and normalised to a string
  * once, and `fields` stays a uniform shape for storage and for HubSpot.
  */
-const scalar = z
-  .union([z.string(), z.number(), z.boolean()])
-  .transform((value) => (typeof value === "string" ? value : String(value)));
+const scalar = z.union([z.string(), z.number(), z.boolean(), z.null()]).transform((value) => {
+  // null is how a page says "no answer" — the Vero estimator sends
+  // `breakeven_month: null` when there is no break-even inside 36 months.
+  // Rejecting it would fail the whole submission for particular answers only,
+  // which is far harder to spot than failing for all of them.
+  if (value === null) return "";
+  return typeof value === "string" ? value : String(value);
+});
 
 export const submissionSchema = z.object({
   magnet: z.string().min(1).max(100),

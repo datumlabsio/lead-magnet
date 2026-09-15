@@ -118,6 +118,14 @@ async function handleSubmission(request: NextRequest): Promise<NextResponse> {
 
   const parsed = submissionSchema.safeParse(payload);
   if (!parsed.success) {
+    // The response stays vague on purpose, but the server must not be. A
+    // handed-over page sends whatever its own script builds, and "Malformed
+    // request." with nothing logged gives no way to find out which field it
+    // disagreed about.
+    console.error(
+      "Rejected a submission payload:",
+      parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; "),
+    );
     return NextResponse.json({ ok: false, message: "Malformed request." }, { status: 400 });
   }
   const submission = parsed.data;
