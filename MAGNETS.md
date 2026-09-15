@@ -77,6 +77,11 @@ store a copy anywhere else. Do not paste it into a chat, a ticket, or the repo.
 Only needed if you want to segment in HubSpot by which magnet a contact came
 from. Skip it and remove `hubspot.source` from the magnet configs instead.
 
+Create it **by hand in the UI**, not through the API. Creating a property needs
+`crm.schemas.contacts.write`, which lets the app rewrite your CRM schema for
+good — too much standing privilege for a one-time action. The app stays
+read-only on schemas, which is all it needs to be checked by `pnpm run doctor`.
+
 1. Settings gear → **Data Management** → **Properties**.
 2. Set the object selector to **Contact properties**.
 3. **Create property**.
