@@ -35,8 +35,19 @@ were sunset in 2022.
 
 #### A. Create the private app
 
+> **Your portal is on the NA2 data centre**, so every HubSpot URL starts
+> `https://app-na2.hubspot.com`, not `https://app.hubspot.com`. A link without
+> the `-na2` will not resolve to this account. Check the address bar if you are
+> ever unsure which one you are on.
+
+> **You must be a Super Admin.** If **Private Apps** is not in the settings
+> sidebar, that is almost always why — the menu item is hidden rather than
+> disabled, so it looks like the feature is missing. Ask whoever owns the portal
+> to grant Super Admin, or to create the app and send you the token.
+
 1. Click the **settings gear**, top right of HubSpot.
 2. Left sidebar → **Integrations** → **Private Apps**.
+   (Some portals file this under *Account Setup* → *Integrations*.)
 3. **Create a private app**.
 4. *Basic Info* tab → name it something recognisable, e.g. `Lead Magnet Delivery`.
 5. *Scopes* tab → search for and tick all three:
