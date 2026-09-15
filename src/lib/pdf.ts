@@ -1,6 +1,7 @@
 import "server-only";
 import chromium from "@sparticuz/chromium";
 import puppeteer, { type Browser } from "puppeteer-core";
+import { isServerless } from "./runtime";
 
 /**
  * HTML to PDF, via headless Chrome.
@@ -25,9 +26,6 @@ const LOCAL_CHROME_PATHS = [
 ];
 
 async function localChromePath(): Promise<string | undefined> {
-  const configured = process.env.CHROME_EXECUTABLE_PATH;
-  if (configured) return configured;
-
   const { access } = await import("node:fs/promises");
   for (const candidate of LOCAL_CHROME_PATHS) {
     try {
@@ -41,28 +39,34 @@ async function localChromePath(): Promise<string | undefined> {
 }
 
 async function launch(): Promise<Browser> {
-  // AWS_LAMBDA_FUNCTION_NAME is set inside a Vercel serverless function and on
-  // Lambda, and nowhere on a developer's machine.
-  const onLambda = Boolean(process.env.AWS_LAMBDA_FUNCTION_NAME);
-
-  if (!onLambda) {
-    const executablePath = await localChromePath();
-    if (!executablePath) {
-      throw new Error(
-        "No local Chrome found for PDF rendering. Install Chrome, or set CHROME_EXECUTABLE_PATH.",
-      );
-    }
+  // An explicit path always wins, wherever it is set.
+  const configured = process.env.CHROME_EXECUTABLE_PATH;
+  if (configured) {
     return puppeteer.launch({
-      executablePath,
+      executablePath: configured,
       headless: true,
       args: ["--no-sandbox", "--disable-dev-shm-usage"],
     });
   }
 
+  if (isServerless()) {
+    return puppeteer.launch({
+      args: chromium.args,
+      executablePath: await chromium.executablePath(),
+      headless: true,
+    });
+  }
+
+  const executablePath = await localChromePath();
+  if (!executablePath) {
+    throw new Error(
+      "No local Chrome found for PDF rendering. Install Chrome, or set CHROME_EXECUTABLE_PATH.",
+    );
+  }
   return puppeteer.launch({
-    args: chromium.args,
-    executablePath: await chromium.executablePath(),
+    executablePath,
     headless: true,
+    args: ["--no-sandbox", "--disable-dev-shm-usage"],
   });
 }
 
