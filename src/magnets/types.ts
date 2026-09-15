@@ -1,3 +1,5 @@
+import type { TemplateData } from "@/lib/template";
+
 /**
  * The shape of a lead magnet.
  *
@@ -24,6 +26,39 @@ export type MagnetField = {
   maxLength?: number;
 };
 
+/**
+ * A generated, per-lead report.
+ *
+ * The alternative to `asset`: instead of signing a link to one file that every
+ * lead receives, the magnet renders a PDF from the lead's own answers and
+ * attaches it. The rendered copy is also stored, so sales can see exactly what
+ * a given prospect was sent.
+ */
+export type MagnetReport = {
+  /** Attachment filename. `{company}` is replaced with the lead's company. */
+  filename: string;
+  /**
+   * Template path, relative to `src/magnets/`. Must be self-contained —
+   * `scripts/extract-template.mjs` and `scripts/embed-fonts.mjs` are what make
+   * a handed-over export satisfy that.
+   */
+  template: string;
+  /**
+   * Turns the submitted answers into the template's variables. Lives in the
+   * magnet's own folder, because it is specific to one report's contract.
+   *
+   * Returning null means this submission cannot produce a report — the lead is
+   * still recorded, and the failure is logged rather than silently emailing a
+   * blank document.
+   */
+  buildData: (fields: Record<string, string>, email: string) => TemplateData | null;
+  /** Page size in CSS pixels. Defaults to US Letter at 96dpi. */
+  width?: number;
+  height?: number;
+  /** Keep CSS box-shadows. Off by default; Chrome prints them as grey blocks. */
+  keepShadows?: boolean;
+};
+
 export type MagnetConfig = {
   /** URL segment. The page lives at `/m/<slug>`. Must match the filename. */
   slug: string;
@@ -35,7 +70,11 @@ export type MagnetConfig = {
    */
   published: boolean;
 
-  asset: {
+  /**
+   * Static-file delivery: one file in Supabase Storage, sent as a signed link.
+   * Exactly one of `asset` or `report` must be set.
+   */
+  asset?: {
     /** Path inside the Supabase storage bucket, e.g. `seo-guide/guide.pdf`. */
     path: string;
     /** Bucket name. Defaults to `magnets`. */
@@ -43,6 +82,9 @@ export type MagnetConfig = {
     /** How long the emailed download link stays valid. Defaults to 24 hours. */
     expiresInSeconds?: number;
   };
+
+  /** Generated-report delivery: a PDF built per lead and attached. */
+  report?: MagnetReport;
 
   email: {
     subject: string;
@@ -75,3 +117,6 @@ export type MagnetConfig = {
 
 export const DEFAULT_BUCKET = "magnets";
 export const DEFAULT_EXPIRY_SECONDS = 60 * 60 * 24;
+
+/** Where the rendered copy of a generated report is filed in the bucket. */
+export const REPORT_PREFIX = "reports";

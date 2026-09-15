@@ -24,6 +24,46 @@ function escapeHtml(value: string): string {
     .replace(/"/g, "&quot;");
 }
 
+/**
+ * Fills `{{ token }}` from the lead's own answers.
+ *
+ * Marketing writes "Hi {{first_name}}," and expects it to work. A token with no
+ * answer collapses to nothing rather than printing the raw braces at someone.
+ */
+function fillTokens(text: string, tokens: Record<string, string>): string {
+  return text.replace(/\{\{\s*(\w+)\s*\}\}/g, (_match, key: string) => tokens[key] ?? "");
+}
+
+/**
+ * Turns `[label](https://…)` into a link, after escaping.
+ *
+ * Escaping first means the label and the surrounding copy cannot introduce
+ * markup; only this deliberate pattern produces a tag. Only http(s) is linked,
+ * so a `javascript:` URL in a config stays inert text.
+ */
+function linkify(escaped: string): string {
+  return escaped.replace(
+    /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,
+    (_match, label: string, href: string) =>
+      `<a href="${href}" style="color:#237fde;text-decoration:underline;">${label}</a>`,
+  );
+}
+
+function paragraphs(body: string[], tokens: Record<string, string>): string {
+  return body
+    .map(
+      (line) => `<p style="margin:0 0 16px;">${linkify(escapeHtml(fillTokens(line, tokens)))}</p>`,
+    )
+    .join("");
+}
+
+function plainText(body: string[], tokens: Record<string, string>): string[] {
+  // Markdown links read fine as "label (url)" in a text part.
+  return body.map((line) =>
+    fillTokens(line, tokens).replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, "$1 ($2)"),
+  );
+}
+
 function hoursFrom(seconds: number): string {
   const hours = Math.round(seconds / 3600);
   if (hours < 24) return `${hours} hour${hours === 1 ? "" : "s"}`;
@@ -31,60 +71,100 @@ function hoursFrom(seconds: number): string {
   return `${days} day${days === 1 ? "" : "s"}`;
 }
 
-function renderDeliveryHtml(magnet: MagnetConfig, asset: SignedAsset): string {
-  const paragraphs = magnet.email.body
-    .map((line) => `<p style="margin:0 0 16px;">${escapeHtml(line)}</p>`)
-    .join("");
-  const buttonLabel = escapeHtml(magnet.email.buttonLabel ?? "Download now");
-
+function shell(inner: string): string {
   return `<!doctype html>
 <html lang="en"><body style="margin:0;padding:24px;background:#f5f5f5;">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:12px;">
     <tr><td style="padding:32px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:16px;line-height:1.55;color:#1a1a1a;">
-      <h1 style="margin:0 0 20px;font-size:22px;line-height:1.3;">${escapeHtml(magnet.email.heading)}</h1>
-      ${paragraphs}
-      <p style="margin:28px 0;">
-        <a href="${asset.url}" style="display:inline-block;padding:13px 26px;background:#1a1a1a;color:#ffffff;text-decoration:none;border-radius:8px;font-weight:600;">${buttonLabel}</a>
-      </p>
-      <p style="margin:0;font-size:13px;color:#6b6b6b;">
-        This link expires in ${hoursFrom(asset.expiresInSeconds)}. Reply to this email if it stops working and we'll send a fresh one.
-      </p>
+${inner}
     </td></tr>
   </table>
 </body></html>`;
 }
 
-function renderDeliveryText(magnet: MagnetConfig, asset: SignedAsset): string {
-  return [
-    magnet.email.heading,
+export type EmailTokens = Record<string, string>;
+
+/** Sends the magnet as a signed download link. A throw means it did not arrive. */
+export async function sendMagnetEmail(
+  magnet: MagnetConfig,
+  to: string,
+  asset: SignedAsset,
+  tokens: EmailTokens = {},
+): Promise<void> {
+  const buttonLabel = escapeHtml(magnet.email.buttonLabel ?? "Download now");
+  const html = shell(
+    `      <h1 style="margin:0 0 20px;font-size:22px;line-height:1.3;">${escapeHtml(
+      fillTokens(magnet.email.heading, tokens),
+    )}</h1>
+${paragraphs(magnet.email.body, tokens)}
+      <p style="margin:28px 0;">
+        <a href="${asset.url}" style="display:inline-block;padding:13px 26px;background:#1a1a1a;color:#ffffff;text-decoration:none;border-radius:8px;font-weight:600;">${buttonLabel}</a>
+      </p>
+      <p style="margin:0;font-size:13px;color:#6b6b6b;">
+        This link expires in ${hoursFrom(asset.expiresInSeconds)}. Reply to this email if it stops working and we'll send a fresh one.
+      </p>`,
+  );
+
+  const text = [
+    fillTokens(magnet.email.heading, tokens),
     "",
-    ...magnet.email.body,
+    ...plainText(magnet.email.body, tokens),
     "",
     magnet.email.buttonLabel ?? "Download now",
     asset.url,
     "",
     `This link expires in ${hoursFrom(asset.expiresInSeconds)}.`,
   ].join("\n");
-}
 
-/** Sends the magnet to the lead. A throw here means the lead did not get it. */
-export async function sendMagnetEmail(
-  magnet: MagnetConfig,
-  to: string,
-  asset: SignedAsset,
-): Promise<void> {
   const { error } = await resend().emails.send({
     from: magnet.email.from ?? env.resendFrom(),
     to,
-    subject: magnet.email.subject,
-    html: renderDeliveryHtml(magnet, asset),
-    text: renderDeliveryText(magnet, asset),
+    subject: fillTokens(magnet.email.subject, tokens),
+    html,
+    text,
     ...(magnet.email.replyTo ? { replyTo: magnet.email.replyTo } : {}),
   });
 
-  if (error) {
-    throw new Error(`Resend rejected the delivery email: ${error.message}`);
-  }
+  if (error) throw new Error(`Resend rejected the delivery email: ${error.message}`);
+}
+
+/**
+ * Sends a generated report as an attachment.
+ *
+ * No download button and no expiry notice: the PDF is in the message, so
+ * telling the reader a link will expire would be nonsense.
+ */
+export async function sendReportEmail(
+  magnet: MagnetConfig,
+  to: string,
+  pdf: Buffer,
+  filename: string,
+  tokens: EmailTokens = {},
+): Promise<void> {
+  const html = shell(
+    `      <h1 style="margin:0 0 20px;font-size:22px;line-height:1.3;">${escapeHtml(
+      fillTokens(magnet.email.heading, tokens),
+    )}</h1>
+${paragraphs(magnet.email.body, tokens)}`,
+  );
+
+  const text = [
+    fillTokens(magnet.email.heading, tokens),
+    "",
+    ...plainText(magnet.email.body, tokens),
+  ].join("\n");
+
+  const { error } = await resend().emails.send({
+    from: magnet.email.from ?? env.resendFrom(),
+    to,
+    subject: fillTokens(magnet.email.subject, tokens),
+    html,
+    text,
+    attachments: [{ filename, content: pdf }],
+    ...(magnet.email.replyTo ? { replyTo: magnet.email.replyTo } : {}),
+  });
+
+  if (error) throw new Error(`Resend rejected the report email: ${error.message}`);
 }
 
 /**

@@ -119,6 +119,71 @@ Then run `pnpm run dev` and check, on the real page:
 
 Only then set `published: true`.
 
+## Two kinds of magnet
+
+Most magnets deliver **one static file** to everyone: upload it to Supabase
+Storage, set `asset` in the config, and the lead gets a signed download link.
+Steps 1-7 above cover that case.
+
+Some deliver a **report generated from the lead's own answers**, attached to the
+email. Those set `report` instead of `asset`. The Vero cost estimator is the
+worked example — read `src/magnets/vero-cost-estimator/` before building another.
+
+### When the page has its own form handling
+
+A calculator or quiz usually has no `<form>` at all: it collects into its own
+state and submits from a click handler. `lm.js` only wires `<form>` elements, so
+**that page does not load `lm.js`**. Look for the submission function instead —
+a well-built one marks it, as Vero's did:
+
+```js
+/* DEV HOOK. Replace the body of this function with the real submission. */
+function submitLead(payload) { ... }
+```
+
+Replace its body with a `fetch` to `/api/lead`, resolving on success and
+throwing on failure. The page's own success and error states then work
+untouched. Keep its redirect, its modal and its copy exactly as they are.
+
+Those pages need two things adding by hand, because `lm.js` is not there to add
+them: a page-load timestamp sent as `elapsedMs` (the API's timing check), and
+UTMs read from the page's own query string.
+
+### Building a generated report
+
+1. **Unpack the template.** Design-tool exports are self-unpacking bundles: the
+   document is a JSON-escaped string and its images live in a
+   `__bundler/manifest` block as gzipped base64, addressed by UUID. Opened in a
+   browser it reassembles; read as a file it is a megabyte of noise with
+   `<img src="de8bdf9c-…">` pointing at nothing.
+
+   ```bash
+   node scripts/extract-template.mjs "<the export>.html" src/magnets/<slug>/report-template.html
+   node scripts/embed-fonts.mjs src/magnets/<slug>/report-template.html
+   ```
+
+   The first unpacks it and inlines the assets; the second replaces the broken
+   `@font-face` rules with real woff2 files. **Skip the second and the PDF goes
+   out in fallback sans with nothing to tell you** — Chrome does not error on a
+   font it cannot fetch.
+
+2. **Read the template's contract.** Grep it for `{{ }}` and `<sc-for>` to see
+   exactly which variables it wants. Your data builder must supply all of them;
+   `renderTemplate` reports any it did not.
+
+3. **Recompute server-side.** Where the page computes figures in the browser,
+   port the model rather than trusting the payload, and write a differential
+   test against the page's own script (`model.test.ts` is the pattern). A
+   tampered payload must not be able to mint a report full of invented numbers.
+
+4. **Check the rendered PDF, do not assume.** Render it and look at it. The
+   renderer already strips `box-shadow`, because Chrome prints a blurred shadow
+   as a hard grey rectangle rather than soft depth.
+
+Handed-over pages and report templates are excluded from Biome in `biome.json`.
+They are someone else's files, and a linter with fix-on-save pointed at them is
+a standing invitation to rewrite work you were told not to touch.
+
 ## What not to do
 
 - **Do not** convert their HTML into a React component. `dangerouslySetInnerHTML` is a lint error here anyway, and their inline `<script>` tags would stop running.

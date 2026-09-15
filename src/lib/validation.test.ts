@@ -99,3 +99,24 @@ describe("validateSubmission", () => {
     expect(result.ok && result.utm).toEqual({ utm_source: "linkedin" });
   });
 });
+
+describe("payload coercion", () => {
+  it("accepts numbers and booleans from a page that sends them", () => {
+    const parsed = submissionSchema.parse({
+      magnet: "test",
+      data: { email: "a@b.com", first_name: "Sam", data_sources: 6, marketing_consent: true },
+      utm: {},
+    });
+    expect(parsed.data.data_sources).toBe("6");
+    expect(parsed.data.marketing_consent).toBe("true");
+  });
+
+  it("still rejects a structured value, which is never a form answer", () => {
+    const parsed = submissionSchema.safeParse({
+      magnet: "test",
+      data: { email: "a@b.com", nested: { oops: 1 } },
+      utm: {},
+    });
+    expect(parsed.success).toBe(false);
+  });
+});

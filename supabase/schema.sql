@@ -21,6 +21,10 @@ create table if not exists public.leads (
   hubspot_contact_id  text,
   hubspot_synced_at   timestamptz,
   hubspot_error       text,
+  -- Generated-report magnets only. `report_path` is our filed copy of the exact
+  -- PDF a lead was sent, so it can be looked up or re-sent without recomputing.
+  report_path         text,
+  report_error        text,
   created_at          timestamptz not null default now()
 );
 
@@ -28,9 +32,19 @@ create index if not exists leads_magnet_created_idx on public.leads (magnet_slug
 create index if not exists leads_email_idx          on public.leads (email);
 -- Supports the per-IP rate limit lookup in src/lib/leads.ts.
 create index if not exists leads_ip_recent_idx      on public.leads (ip_hash, magnet_slug, created_at desc);
+-- Finds generated reports that failed, so they can be re-sent.
+create index if not exists leads_report_failed_idx on public.leads (created_at desc)
+  where report_error is not null;
+
 -- Finds leads whose HubSpot push failed, so they can be replayed.
 create index if not exists leads_hubspot_pending_idx on public.leads (created_at desc)
   where hubspot_contact_id is null;
+
+-- `create table if not exists` above does nothing to a table that already
+-- exists, so columns added after the first run have to be applied explicitly.
+-- These are idempotent and safe to re-run.
+alter table public.leads add column if not exists report_path  text;
+alter table public.leads add column if not exists report_error text;
 
 -- RLS on with no policies: the anon and authenticated keys can read nothing.
 -- Only the service role key, which lives in the server environment and never

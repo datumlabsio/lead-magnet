@@ -1,14 +1,26 @@
-import { type NextRequest, NextResponse } from "next/server";
-import { sendInternalNotification, sendMagnetEmail } from "@/lib/email";
+import { after, type NextRequest, NextResponse } from "next/server";
+import { sendInternalNotification, sendMagnetEmail, sendReportEmail } from "@/lib/email";
 import { hubspotConfigured } from "@/lib/env";
 import { upsertContact } from "@/lib/hubspot";
-import { markEmailSent, markHubspotResult, recentSubmissionCount, recordLead } from "@/lib/leads";
-import { signAssetUrl } from "@/lib/storage";
+import {
+  markEmailSent,
+  markHubspotResult,
+  markReportResult,
+  recentSubmissionCount,
+  recordLead,
+} from "@/lib/leads";
+import { renderMagnetReport } from "@/lib/report-render";
+import { signAssetUrl, storeReport } from "@/lib/storage";
 import { looksAutomated, submissionSchema, validateSubmission } from "@/lib/validation";
 import { getPublishedMagnet } from "@/magnets/registry";
+import type { MagnetConfig } from "@/magnets/types";
 
-// node:crypto in the lead hashing path, so this cannot run on the edge runtime.
+// node:crypto in the lead hashing path, and headless Chrome for report
+// rendering, so this cannot run on the edge runtime.
 export const runtime = "nodejs";
+
+// Chrome needs considerably longer than the default to boot and render.
+export const maxDuration = 60;
 
 /**
  * Submissions per IP hash per magnet per hour before we stop accepting.
@@ -20,6 +32,8 @@ export const runtime = "nodejs";
  * this is only a backstop against someone hammering one form.
  */
 const HOURLY_LIMIT = 40;
+
+const GENERIC_FAILURE = "Something went wrong on our end. Please try again.";
 
 function clientIp(request: NextRequest): string | null {
   const forwarded = request.headers.get("x-forwarded-for");
@@ -36,8 +50,6 @@ function silentSuccess(): NextResponse {
   return NextResponse.json({ ok: true });
 }
 
-const GENERIC_FAILURE = "Something went wrong on our end. Please try again.";
-
 /**
  * Outermost guard. Every failure the handler anticipates is already answered
  * with its own message; this only catches the ones it does not, so an
@@ -50,6 +62,49 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   } catch (cause) {
     console.error("Unhandled error in lead submission", cause);
     return NextResponse.json({ ok: false, message: GENERIC_FAILURE }, { status: 500 });
+  }
+}
+
+/**
+ * Renders the personalised report, emails it, and files a copy.
+ *
+ * Runs after the response has been sent. A page that shows its own confirmation
+ * and redirects a few seconds later must not sit waiting on a Chrome cold
+ * start, and the lead is already durably recorded before this begins — so the
+ * worst case here is a report that has to be re-sent, not a lead that is lost.
+ */
+async function deliverReport(
+  magnet: MagnetConfig,
+  leadId: string,
+  email: string,
+  fields: Record<string, string>,
+  tokens: Record<string, string>,
+): Promise<void> {
+  try {
+    const rendered = await renderMagnetReport(magnet, fields, email);
+    if (!rendered) {
+      await markReportResult(leadId, { error: "Answers did not produce a report" });
+      console.error(`Lead ${leadId} produced no report for magnet "${magnet.slug}"`);
+      return;
+    }
+
+    await sendReportEmail(magnet, email, rendered.pdf, rendered.filename, tokens);
+    await markEmailSent(leadId);
+
+    // Filing our own copy is a convenience, not part of the promise to the
+    // lead, so it must never turn a delivered report into a recorded failure.
+    try {
+      const path = await storeReport(magnet.slug, leadId, rendered.pdf);
+      await markReportResult(leadId, { path });
+    } catch (cause) {
+      console.warn(`Report for lead ${leadId} was sent but not stored`, cause);
+      await markReportResult(leadId, { path: null });
+    }
+  } catch (cause) {
+    console.error(`Could not deliver report for lead ${leadId}`, cause);
+    await markReportResult(leadId, {
+      error: cause instanceof Error ? cause.message : String(cause),
+    });
   }
 }
 
@@ -112,24 +167,33 @@ async function handleSubmission(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ ok: false, message: GENERIC_FAILURE }, { status: 500 });
   }
 
+  // Available to the email copy as {{ firstname }}, {{ company }} and so on.
+  const tokens = { ...validated.fields, email: validated.email };
+
   // 2. The promise we made to the person who filled in the form.
-  try {
-    const asset = await signAssetUrl(magnet);
-    await sendMagnetEmail(magnet, validated.email, asset);
-    await markEmailSent(leadId);
-  } catch (cause) {
-    console.error(`Could not deliver magnet "${magnet.slug}" to lead ${leadId}`, cause);
-    return NextResponse.json(
-      {
-        ok: false,
-        message: "We saved your details but couldn't send the email. We'll follow up shortly.",
-      },
-      { status: 500 },
-    );
+  if (magnet.report) {
+    // Rendering is slow, so it happens after the response. The page has already
+    // been told the report is on its way, which is true.
+    after(() => deliverReport(magnet, leadId, validated.email, validated.fields, tokens));
+  } else {
+    try {
+      const asset = await signAssetUrl(magnet);
+      await sendMagnetEmail(magnet, validated.email, asset, tokens);
+      await markEmailSent(leadId);
+    } catch (cause) {
+      console.error(`Could not deliver magnet "${magnet.slug}" to lead ${leadId}`, cause);
+      return NextResponse.json(
+        {
+          ok: false,
+          message: "We saved your details but couldn't send the email. We'll follow up shortly.",
+        },
+        { status: 500 },
+      );
+    }
   }
 
-  // 3. Best-effort from here. The lead has the asset and we have the record, so
-  //    a CRM outage is an operational problem, not a lost lead.
+  // 3. Best-effort from here. The lead has been recorded and the delivery is
+  //    under way, so a CRM outage is an operational problem, not a lost lead.
   if (hubspotConfigured()) {
     try {
       const contactId = await upsertContact(magnet, validated.email, validated.fields);

@@ -10,10 +10,23 @@ import type { MagnetConfig } from "@/magnets/types";
  * That asymmetry is deliberate. A designer adding an input to their HTML must
  * never be able to break the pipeline or quietly widen what we persist.
  */
+/**
+ * A handed-over page sends whatever its own script happens to build. The Vero
+ * estimator, for instance, sends numbers for the calculator inputs and a boolean
+ * for the consent checkbox, while a plain HTML form sends only strings.
+ *
+ * Coercing here rather than demanding strings keeps that the page author's
+ * business instead of ours: every scalar is accepted and normalised to a string
+ * once, and `fields` stays a uniform shape for storage and for HubSpot.
+ */
+const scalar = z
+  .union([z.string(), z.number(), z.boolean()])
+  .transform((value) => (typeof value === "string" ? value : String(value)));
+
 export const submissionSchema = z.object({
   magnet: z.string().min(1).max(100),
-  data: z.record(z.string(), z.string()).default({}),
-  utm: z.record(z.string(), z.string()).default({}),
+  data: z.record(z.string(), scalar).default({}),
+  utm: z.record(z.string(), scalar).default({}),
   /** Milliseconds between page load and submit, reported by the browser. */
   elapsedMs: z.number().int().nonnegative().optional(),
 });

@@ -1,0 +1,137 @@
+import type { MagnetConfig } from "../types";
+import { type EstimatorInput, estimate, isCadenceKey, isSizeKey } from "./model";
+import { buildReportData } from "./report";
+
+/**
+ * Vero cost estimator.
+ *
+ * Unlike a plain download magnet, this one has no `asset`: the deliverable is a
+ * PDF rendered from the visitor's own calculator answers and attached to the
+ * email. See `report.buildData` below for the hand-off into the model.
+ *
+ * The page owns its own submit, success state and redirect, so it does not load
+ * `/lm.js` — its `submitLead()` posts to the API directly.
+ */
+
+/** Reads an integer answer, tolerating the strings a form sends. */
+function int(fields: Record<string, string>, key: string): number {
+  const value = Number.parseInt(fields[key] ?? "", 10);
+  return Number.isFinite(value) ? value : Number.NaN;
+}
+function float(fields: Record<string, string>, key: string): number {
+  const value = Number.parseFloat(fields[key] ?? "");
+  return Number.isFinite(value) ? value : Number.NaN;
+}
+
+export const veroCostEstimator: MagnetConfig = {
+  slug: "vero-cost-estimator",
+  name: "Vero Cost Estimator",
+  published: false,
+
+  report: {
+    filename: "Vero cost estimate — {company}.pdf",
+    template: "vero-cost-estimator/report-template.html",
+    width: 816,
+    height: 1056,
+
+    /**
+     * Rebuilds the estimate server-side from the six raw inputs.
+     *
+     * The browser sends its computed figures too, but they are not used: the
+     * report is the only place these numbers are ever seen, so recomputing costs
+     * nothing and means a doctored payload cannot mint a report full of
+     * invented savings.
+     */
+    buildData(fields, email) {
+      const size = fields.warehouse_size_key ?? "";
+      const cadence = fields.sync_cadence_key ?? "";
+      if (!isSizeKey(size) || !isCadenceKey(cadence)) return null;
+
+      const cloud = float(fields, "cloud_spend_month");
+      const input: EstimatorInput = {
+        pipelines: int(fields, "data_sources"),
+        size,
+        cadence,
+        kpis: int(fields, "kpi_count"),
+        engineers: int(fields, "inhouse_engineers"),
+        salary: float(fields, "engineer_salary"),
+        ...(Number.isFinite(cloud) && cloud > 0 ? { infra: cloud } : {}),
+      };
+
+      const required = [input.pipelines, input.kpis, input.engineers, input.salary];
+      if (required.some((n) => !Number.isFinite(n))) return null;
+      if (input.pipelines < 1 || input.engineers < 1 || input.salary <= 0) return null;
+
+      return buildReportData(estimate(input), {
+        firstName: fields.firstname ?? "",
+        lastName: fields.lastname ?? "",
+        company: fields.company ?? "",
+        email,
+      });
+    },
+  },
+
+  email: {
+    subject: "Your Vero cost estimate is attached",
+    heading: "Your Vero cost estimate is attached",
+    body: [
+      "Hi {{firstname}},",
+      "Thanks for running the numbers on your data stack. Your personalized cost estimate is attached as a PDF, built entirely from what you told us, with the full math and assumptions laid out so you can check every line against your own numbers.",
+      "Inside, you'll find what building this in-house would cost you in year one and over three years, how that compares to Vero, the engineering hours you'd get back, and how much sooner you'd have a working stack.",
+      "No need to take our word for it. It's all worked through step by step in the attachment.",
+      "If the numbers look right, [book 30 minutes with me](https://www.datumlabs.io/vero#v-book). Same person who'd scope and build your stack, no salesperson, no pitch deck.",
+      "Nidal",
+      "Datum Labs, Vero",
+    ],
+  },
+
+  fields: [
+    {
+      name: "firstname",
+      label: "First name",
+      required: true,
+      hubspotProperty: "firstname",
+      maxLength: 80,
+    },
+    {
+      name: "lastname",
+      label: "Last name",
+      required: true,
+      hubspotProperty: "lastname",
+      maxLength: 80,
+    },
+    {
+      name: "company",
+      label: "Company",
+      required: true,
+      hubspotProperty: "company",
+      maxLength: 120,
+    },
+    { name: "marketing_consent", label: "Marketing consent" },
+
+    // Calculator answers. Kept in Supabase for analysis and fed to the report;
+    // only the ones sales would segment on are pushed to HubSpot.
+    { name: "warehouse_size_key", label: "Warehouse size (key)", maxLength: 20 },
+    { name: "sync_cadence_key", label: "Sync cadence (key)", maxLength: 20 },
+    { name: "data_sources", label: "Data sources", maxLength: 10 },
+    { name: "warehouse_size", label: "Warehouse size", maxLength: 40 },
+    { name: "sync_cadence", label: "Sync cadence", maxLength: 40 },
+    { name: "kpi_count", label: "KPIs", maxLength: 10 },
+    { name: "inhouse_engineers", label: "In-house engineers", maxLength: 10 },
+    { name: "engineer_salary", label: "Engineer salary", maxLength: 12 },
+    { name: "cloud_spend_month", label: "Cloud spend / month", maxLength: 12 },
+
+    // Computed by the page. Stored for analysis only — the report recomputes
+    // everything from the inputs above rather than trusting these.
+    { name: "saving_year_one", label: "Saving, year one (reported)", maxLength: 16 },
+    { name: "saving_three_year", label: "Saving, three years (reported)", maxLength: 16 },
+    { name: "hours_freed_y1", label: "Hours freed, year one (reported)", maxLength: 16 },
+    { name: "days_to_live", label: "Days to live (reported)", maxLength: 10 },
+    { name: "breakeven_month", label: "Break-even month (reported)", maxLength: 10 },
+  ],
+
+  hubspot: {
+    lifecycleStage: "lead",
+    source: "vero-cost-estimator",
+  },
+};

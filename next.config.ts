@@ -7,6 +7,18 @@ const nextConfig: NextConfig = {
   output: "standalone",
   reactStrictMode: true,
 
+  // Chrome and puppeteer must not be bundled: the chromium package ships a
+  // binary payload that a bundler cannot meaningfully process, and puppeteer
+  // resolves its own files at runtime.
+  serverExternalPackages: ["puppeteer-core", "@sparticuz/chromium"],
+
+  // Report templates are read from disk at render time. Without this the
+  // tracer cannot see them — nothing imports them — and they are missing from
+  // the deployed function.
+  outputFileTracingIncludes: {
+    "/api/lead": ["./src/magnets/**/*.html"],
+  },
+
   async rewrites() {
     return {
       // `afterFiles` runs only once the filesystem has had its turn, so a real

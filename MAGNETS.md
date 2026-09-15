@@ -119,6 +119,19 @@ Project Settings → Environment Variables. Use `.env.example` as the list.
 inlines a value into the browser bundle, where anyone can read it with
 view-source. These are all full-access credentials.
 
+### Run the database migration
+
+If you set up Supabase before generated reports existed, add the two columns
+they use. `create table if not exists` does nothing to a table that is already
+there, so this has to be run explicitly:
+
+```sql
+alter table public.leads add column if not exists report_path  text;
+alter table public.leads add column if not exists report_error text;
+```
+
+Safe to re-run, and already included in `supabase/schema.sql` for new projects.
+
 ### Check it all works
 
 Fill in `.env.local` locally, then:
@@ -199,6 +212,18 @@ Useful columns when something looks wrong:
 
 ---
 
+## Two kinds of magnet
+
+**A download.** One file, the same for everyone, delivered as a time-limited
+link. Hand over the landing page and the file.
+
+**A generated report.** A PDF built from each lead's own answers and attached to
+the email — a calculator, a quiz, an assessment. Hand over the landing page, the
+report template, and the email copy. The Vero cost estimator is the live example.
+
+Both are set up by the same request to the coding agent; it can tell which is
+which from what you give it.
+
 ## How it works
 
 ```
@@ -231,3 +256,5 @@ precise rejection message is free tuning advice for whoever is probing the form.
 | `supabase/schema.sql` | Database and bucket setup |
 | `.claude/skills/add-magnet/` | Instructions the coding agent follows |
 | `scripts/doctor.mjs` | `pnpm run doctor` — checks every integration |
+| `scripts/extract-template.mjs` | Unpacks a design-tool report export |
+| `scripts/embed-fonts.mjs` | Embeds real fonts into a report template |

@@ -7,8 +7,9 @@
  */
 import { sampleGuide } from "./sample-guide";
 import type { MagnetConfig } from "./types";
+import { veroCostEstimator } from "./vero-cost-estimator/config";
 
-const all: MagnetConfig[] = [sampleGuide];
+const all: MagnetConfig[] = [sampleGuide, veroCostEstimator];
 
 const bySlug = new Map<string, MagnetConfig>(all.map((magnet) => [magnet.slug, magnet]));
 

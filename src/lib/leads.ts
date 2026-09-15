@@ -64,11 +64,25 @@ export async function recordLead(input: LeadInput): Promise<string> {
   return data.id as string;
 }
 
+/**
+ * Applies a status update to a lead, and says so when it fails.
+ *
+ * These writes are all best-effort — none of them should unwind a delivery that
+ * already happened. But discarding the error outright means a wrong column name
+ * or a schema that was never migrated looks exactly like success, and the first
+ * sign of trouble is a report column that is empty for every lead. Log it.
+ */
+async function patchLead(leadId: string, patch: Record<string, unknown>): Promise<void> {
+  const { error } = await supabase().from("leads").update(patch).eq("id", leadId);
+  if (error) {
+    console.error(
+      `Could not update lead ${leadId} (${Object.keys(patch).join(", ")}): ${error.message}`,
+    );
+  }
+}
+
 export async function markEmailSent(leadId: string): Promise<void> {
-  await supabase()
-    .from("leads")
-    .update({ email_sent_at: new Date().toISOString() })
-    .eq("id", leadId);
+  await patchLead(leadId, { email_sent_at: new Date().toISOString() });
 }
 
 export async function markHubspotResult(
@@ -80,7 +94,26 @@ export async function markHubspotResult(
       ? { hubspot_contact_id: result.contactId, hubspot_synced_at: new Date().toISOString() }
       : { hubspot_error: result.error.slice(0, 500) };
 
-  await supabase().from("leads").update(patch).eq("id", leadId);
+  await patchLead(leadId, patch);
+}
+
+/**
+ * Records what happened to a generated report.
+ *
+ * `path` is where our own copy was filed, or null when the report was sent but
+ * storing the copy failed — a distinction worth keeping, because the first means
+ * sales can pull up exactly what the prospect received and the second does not.
+ */
+export async function markReportResult(
+  leadId: string,
+  result: { path: string | null } | { error: string },
+): Promise<void> {
+  const patch =
+    "error" in result
+      ? { report_error: result.error.slice(0, 500) }
+      : { report_path: result.path, report_error: null };
+
+  await patchLead(leadId, patch);
 }
 
 /**
