@@ -248,7 +248,23 @@ section("HubSpot");
 const SCOPES = "crm.objects.contacts.write, crm.objects.contacts.read, crm.schemas.contacts.read";
 
 if (env("HUBSPOT_PRIVATE_APP_TOKEN")) {
-  const auth = { authorization: `Bearer ${env("HUBSPOT_PRIVATE_APP_TOKEN")}` };
+  const hsToken = env("HUBSPOT_PRIVATE_APP_TOKEN");
+  const auth = { authorization: `Bearer ${hsToken}` };
+
+  // HubSpot's app page shows the access token and the client secret side by
+  // side, both opaque strings. Only the access token authenticates these calls.
+  // A private app token is prefixed `pat-`; a client secret is a bare UUID.
+  if (!hsToken.startsWith("pat-")) {
+    const looksLikeUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+      hsToken,
+    );
+    warn(
+      looksLikeUuid
+        ? "HUBSPOT_PRIVATE_APP_TOKEN looks like the CLIENT SECRET, not the access token"
+        : "HUBSPOT_PRIVATE_APP_TOKEN does not start with `pat-`",
+      "Use the Access token from the app's Auth tab. The client secret is for OAuth flows this system does not use.",
+    );
+  }
 
   const probe = await fetch("https://api.hubapi.com/crm/v3/objects/contacts?limit=1", {
     headers: auth,
