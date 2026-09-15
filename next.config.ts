@@ -4,7 +4,13 @@ const nextConfig: NextConfig = {
   // A standalone build puts the server and only its needed dependencies in
   // .next/standalone, which is what goes in the container. DES §8: a web-app
   // deploys as a container, and a smaller image is a smaller attack surface.
-  output: "standalone",
+  //
+  // Off on Vercel, which does its own file tracing and therefore never writes
+  // `next-server.js.nft.json`. Standalone reads exactly that file to decide
+  // which dependencies to copy, so leaving it on fails the build with an ENOENT
+  // that names a file nothing appears to have asked for. Vercel does not need
+  // standalone; the Dockerfile does, and still gets it.
+  output: process.env.VERCEL ? undefined : "standalone",
   reactStrictMode: true,
 
   // Chrome and puppeteer must not be bundled: the chromium package ships a
