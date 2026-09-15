@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Sample Guide</title>
+    <meta name="description" content="A worked example of a wired-up lead magnet landing page." />
+    <!-- Draft magnets should not be indexed. Remove when the magnet goes live. -->
+    <meta name="robots" content="noindex" />
+    <style>
+      :root { color-scheme: light; }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+        line-height: 1.6;
+        color: #1a1a1a;
+        background: #fafaf9;
+      }
+      .wrap { max-width: 34rem; margin: 0 auto; padding: 4rem 1.5rem; }
+      h1 { font-size: 2rem; line-height: 1.2; margin: 0 0 1rem; }
+      .lede { font-size: 1.05rem; color: #57534e; margin: 0 0 2rem; }
+      form { background: #fff; padding: 1.75rem; border-radius: 12px; border: 1px solid #e7e5e4; }
+      label { display: block; font-size: 0.875rem; font-weight: 600; margin: 0 0 0.35rem; }
+      input {
+        width: 100%; padding: 0.7rem 0.85rem; font-size: 1rem; font-family: inherit;
+        border: 1px solid #d6d3d1; border-radius: 8px; margin-bottom: 1rem; background: #fff;
+      }
+      input:focus-visible { outline: 2px solid #1a1a1a; outline-offset: 1px; border-color: #1a1a1a; }
+      button {
+        width: 100%; padding: 0.8rem 1rem; font-size: 1rem; font-weight: 600; font-family: inherit;
+        color: #fff; background: #1a1a1a; border: 0; border-radius: 8px; cursor: pointer;
+      }
+      button:disabled { opacity: 0.65; cursor: default; }
+      .fine { font-size: 0.8rem; color: #78716c; margin: 0.9rem 0 0; }
+    </style>
+  </head>
+  <body>
+    <main class="wrap">
+      <h1>The Sample Guide</h1>
+      <p class="lede">
+        A worked example. Replace this whole file with the landing page you were handed — the only
+        things that have to survive are the form contract below and the script tag at the bottom.
+      </p>
+
+      <!--
+        THE CONTRACT — three things and nothing else:
+          1. an input with name="email"
+          2. any other input's name matches a `fields[].name` in src/magnets/sample-guide.ts
+          3. the <script src="/lm.js"> tag at the end of <body>
+
+        Optional hooks, both used below:
+          data-lm-fields    wrapper hidden on success, so the message replaces the inputs
+          data-lm-message   where status text is written; styled by you rather than by lm.js
+      -->
+      <form data-magnet="sample-guide" data-lm-sending="Sending…">
+        <div data-lm-fields>
+          <label for="first_name">First name</label>
+          <input id="first_name" name="first_name" type="text" autocomplete="given-name" required />
+
+          <label for="company">Company</label>
+          <input id="company" name="company" type="text" autocomplete="organization" />
+
+          <label for="email">Work email</label>
+          <input id="email" name="email" type="email" autocomplete="email" required />
+
+          <button type="submit">Send me the guide</button>
+        </div>
+        <p data-lm-message role="status"></p>
+        <p class="fine">We'll email the guide straight away. No spam, unsubscribe any time.</p>
+      </form>
+    </main>
+
+    <script src="/lm.js" data-magnet="sample-guide" defer></script>
+  </body>
+</html>

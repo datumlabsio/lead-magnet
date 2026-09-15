@@ -69,6 +69,21 @@ reported but not gated — the number is still visible in every run.
   on a Monday. Merging those is how this repo stays current.
 - Conventional Commits. Branches `feat/…` `fix/…` `chore/…`, short-lived.
 
+## Lead magnets
+
+A magnet is a handed-over landing page plus a config. Adding one is a routine
+task with a written procedure — **use the `add-magnet` skill in
+`.claude/skills/`**, do not improvise it.
+
+- `public/m/<slug>/` holds the landing page bundle **verbatim**. It is somebody
+  else's design; you add a script tag and `name` attributes, nothing more.
+- `src/magnets/<slug>.ts` holds the wiring, registered in `registry.ts`.
+- `MAGNETS.md` is the operator-facing doc, written for non-technical staff.
+
+The submit pipeline writes to Supabase **before** emailing and before HubSpot.
+Keep that order: steps after the write can be replayed from the lead row, and
+nothing can be replayed from a lead that was never recorded.
+
 ## Guardrails
 
 - **NEVER commit a secret**, or a plaintext value that resolves to one. Only
@@ -95,3 +110,13 @@ reported but not gated — the number is still visible in every run.
 
 - What the archetype's CI does: `datumlabsio/actions/docs/`
 - The rules all of this enforces: [datumlabsio/datum-standards](https://github.com/datumlabsio/datum-standards)
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->
