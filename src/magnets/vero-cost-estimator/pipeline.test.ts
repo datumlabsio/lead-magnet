@@ -79,9 +79,10 @@ function run(a: Answers) {
   if (!parsed.success) throw new Error("unreachable");
 
   const validated = validateSubmission(veroCostEstimator, parsed.data);
-  expect(validated.ok, `validation rejected: ${"message" in validated ? validated.message : ""}`).toBe(
-    true,
-  );
+  expect(
+    validated.ok,
+    `validation rejected: ${"message" in validated ? validated.message : ""}`,
+  ).toBe(true);
   if (!validated.ok) throw new Error("unreachable");
 
   const data = veroCostEstimator.report?.buildData(validated.fields, validated.email);
@@ -120,10 +121,46 @@ describe("every size and cadence the form offers", () => {
 
 describe("the edges of the form's own limits", () => {
   const cases: Array<[string, Answers]> = [
-    ["minimum everything", { ...base, pipelines: 1, size: "u10gb", cadence: "weekly", kpis: 0, engineers: 1, salary: 1, breakEven: null }],
-    ["maximum everything", { ...base, pipelines: 100, size: "o50tb", cadence: "realtime", kpis: 300, engineers: 10, salary: 500_000 }],
+    [
+      "minimum everything",
+      {
+        ...base,
+        pipelines: 1,
+        size: "u10gb",
+        cadence: "weekly",
+        kpis: 0,
+        engineers: 1,
+        salary: 1,
+        breakEven: null,
+      },
+    ],
+    [
+      "maximum everything",
+      {
+        ...base,
+        pipelines: 100,
+        size: "o50tb",
+        cadence: "realtime",
+        kpis: 300,
+        engineers: 10,
+        salary: 500_000,
+      },
+    ],
     ["no KPIs", { ...base, kpis: 0 }],
-    ["no break-even", { ...base, pipelines: 81, size: "u50tb", cadence: "weekly", kpis: 208, engineers: 1, salary: 395_077, cloud: 82_518, breakEven: null }],
+    [
+      "no break-even",
+      {
+        ...base,
+        pipelines: 81,
+        size: "u50tb",
+        cadence: "weekly",
+        kpis: 208,
+        engineers: 1,
+        salary: 395_077,
+        cloud: 82_518,
+        breakEven: null,
+      },
+    ],
     ["cloud spend of zero", { ...base, cloud: 0 }],
     ["cloud spend left blank", { ...base, cloud: null }],
     ["fractional salary", { ...base, salary: 99_999.99, cloud: 12.5 }],
