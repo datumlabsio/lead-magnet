@@ -55,7 +55,10 @@ export const veroCostEstimator: MagnetConfig = {
         kpis: int(fields, "kpi_count"),
         engineers: int(fields, "inhouse_engineers"),
         salary: float(fields, "engineer_salary"),
-        ...(Number.isFinite(cloud) && cloud > 0 ? { infra: cloud } : {}),
+        // `>= 0`, not `> 0`. A visitor who enters 0 has answered the question,
+        // and the page honours that; treating it as unanswered would silently
+        // substitute our estimate and print a figure they never gave us.
+        ...(Number.isFinite(cloud) && cloud >= 0 ? { infra: cloud } : {}),
       };
 
       const required = [input.pipelines, input.kpis, input.engineers, input.salary];
@@ -127,7 +130,12 @@ export const veroCostEstimator: MagnetConfig = {
     { name: "saving_three_year", label: "Saving, three years (reported)", maxLength: 16 },
     { name: "hours_freed_y1", label: "Hours freed, year one (reported)", maxLength: 16 },
     { name: "days_to_live", label: "Days to live (reported)", maxLength: 10 },
+    // Sent as null when there is no break-even inside 36 months, which is a
+    // common outcome rather than an edge case.
     { name: "breakeven_month", label: "Break-even month (reported)", maxLength: 10 },
+    { name: "engineer_months", label: "Engineer-months freed (reported)", maxLength: 16 },
+    { name: "inhouse_cost_y1", label: "In-house cost, year one (reported)", maxLength: 16 },
+    { name: "datumlabs_cost_y1", label: "Datum Labs cost, year one (reported)", maxLength: 16 },
   ],
 
   hubspot: {
