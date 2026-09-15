@@ -1,0 +1,10 @@
+_commit: v0.17.0
+_src_path: gh:datumlabsio/scaffolds
+archetype: web-app
+default_branch: main
+framework: next
+owning_team: lead-magnet
+repo_description: A plug-and-play lead magnet delivery system designed to capture
+    emails
+repo_name: lead-magnet
+retrofit: false

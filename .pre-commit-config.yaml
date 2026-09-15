@@ -1,0 +1,50 @@
+# DES §3: a pre-commit config in the repo, and a CI stage that runs the same
+# hooks. Owned by the scaffold — bumped by `copier update`, not hand-edited.
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+        # Kubernetes manifests are routinely multi-document — a Service and a
+        # Deployment separated by `---` in one file. Without this, check-yaml
+        # reports "expected a single document in the stream" and fails on
+        # `git commit`, in every gitops repository that has one.
+        #
+        # Found on polaris the day a real multi-document manifest landed. The
+        # pull request that added it was GREEN: it touched only `gitops/`, and
+        # the repository-wide hooks run inside `python-ci`, whose job was
+        # skipped by path filters. `main-watch` runs every folder, so it caught
+        # it 2.5 hours later.
+        args: [--allow-multiple-documents]
+        # A Helm chart's templates/ holds GO templates — `{{- if }}`,
+        # `{{- define }}` — which are not YAML and never will be. check-yaml
+        # cannot parse them, and it fails on `git commit`, before CI is even
+        # involved. They are validated by `helm lint` and by kubeconform on the
+        # rendered output, which is the only point at which they are YAML.
+        #
+        # Harmless in a repo with no charts: the pattern matches nothing.
+        exclude: '(^|/)charts/[^/]+/templates/'
+      - id: check-merge-conflict
+      - id: check-added-large-files
+
+  # THE ONLY PLACE A SECRET CAN STILL BE STOPPED.
+  #
+  # `security-baseline` runs gitleaks in CI, which finds a credential after it
+  # is already in the history — and at that point the only remedy is rotating
+  # it. Four teams are rotating keys this week for exactly that reason; every
+  # one of those credentials would have been refused here instead.
+  #
+  # Pinned to the SAME version the baseline runs (configs/security-tool-versions.txt),
+  # so a developer's `git commit` and CI agree about what a secret looks like.
+  # If they drifted, the hook would pass and CI would fail on the same line,
+  # which is worse than not having the hook.
+  #
+  # This is PREVENTION, not enforcement: `git commit --no-verify` skips it and
+  # not everybody installs hooks. CI stays the control. The two are different
+  # jobs — one stops the mistake, the other refuses to ship it.
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.1
+    hooks:
+      - id: gitleaks

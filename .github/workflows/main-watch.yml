@@ -1,0 +1,52 @@
+
+name: main-watch
+
+# Nothing else looks at `main` (B-54).
+#
+# CI runs on pull requests, so a default branch rots quietly: a pinned action is
+# deleted, a dependency moves, a gate is tightened upstream. The next person to
+# branch inherits the breakage and assumes they caused it.
+#
+# This calls the `-ci` workflows DIRECTLY and never the archetype wrappers. A
+# wrapper references its stages relatively, and a cross-repository nested call
+# dies at STARTUP on a non-`pull_request` event — no job, no step, no log
+# (B-52). A schedule is a non-`pull_request` event.
+#
+# The inputs mirror ci.yml, because they are the same gates on the same folders.
+# They are NOT uniform: gitops-ci takes `root`, docs-ci takes no path at all, and
+# the rest take `working-directory`.
+
+on:
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  web-app:
+    uses: datumlabsio/actions/.github/workflows/web-ci.yml@v1.6.0
+
+  # The repository-wide hooks, watched against `main` too. The break that made
+  # this job necessary was found HERE and not by a pull request: a change that
+  # touched only gitops/ skipped the folder job the hooks used to live in.
+  # Watching `main` per folder would have missed it again.
+  hooks:
+    uses: datumlabsio/actions/.github/workflows/pre-commit.yml@v1.6.0
+
+  # `always()`, so the report runs whether the gates passed, failed or were
+  # cancelled. Without it a failure would be reported by nothing at all.
+  report:
+    if: ${{ always() }}
+    needs: [web-app, hooks]
+    uses: datumlabsio/actions/.github/workflows/main-watch-report.yml@v1.6.0
+    # Granted HERE, not in the called workflow. A called workflow can only
+    # reduce the caller's permissions, never add to them.
+    permissions:
+      contents: read
+      issues: write
+    with:
+      failed: ${{ contains(needs.*.result, 'failure') }}
+      details: |
+        web-app: ${{ needs['web-app'].result }}

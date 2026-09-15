@@ -1,0 +1,37 @@
+
+name: release
+
+# A merge to `main` cuts a version, and — where this repo builds an image —
+# publishes it under that version (B-56).
+#
+# `release` is silent when there is nothing to release: it reads the conventional
+# commits since the last tag and only tags when one is warranted. So this running
+# on every merge is not the same as tagging on every merge.
+#
+# Publishing is gated on a tag actually being cut. A pull request never publishes
+# — `ci.yml` calls the same workflow with `publish: false`, because a fork's pull
+# request must never be able to push an image.
+
+on:
+  push:
+    branches: [main]
+
+# `release.yml` declares no permissions of its own by design: a called workflow
+# cannot request more than its caller holds, so the caller grants them.
+permissions:
+  contents: write
+
+jobs:
+  release:
+    uses: datumlabsio/actions/.github/workflows/release.yml@v1.6.0
+
+  publish-web-app:
+    needs: release
+    if: ${{ needs.release.outputs.released == 'true' }}
+    uses: datumlabsio/actions/.github/workflows/container-ci.yml@v1.6.0
+    permissions:
+      contents: read
+      packages: write
+    with:
+      version: ${{ needs.release.outputs.version }}
+      publish: true

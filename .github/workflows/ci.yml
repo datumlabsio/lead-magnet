@@ -1,0 +1,103 @@
+# DES §4: CI is a THIN CALLER pinned to an exact version. Bespoke CI is
+# forbidden — fix a gate in datumlabsio/actions and bump the pin below.
+#
+# This file is owned by the scaffold. `copier update` bumps it; do not hand-edit.
+name: ci
+
+
+
+# Pull requests only, deliberately.
+#
+# A push run on main repeats the pull request run that passed minutes earlier,
+# and main is protected, so nothing reaches it except through a green pull
+# request. It also cannot work: an archetype wrapper calls its stages by relative
+# reference, and a cross-repository nested call resolves on a pull request but
+# dies at STARTUP on a push — no jobs, no log, just "this run likely failed
+# because of a workflow file issue". Every repo built from a scaffold had a
+# permanently red default branch because of it, while its pull request checks
+# stayed green.
+#
+# release.yml has its own push trigger and is unaffected.
+on:
+  pull_request:
+
+# DES §4: least-privilege GITHUB_TOKEN, declared explicitly.
+permissions:
+  contents: read
+
+# The escaped expression below is the last key in this mapping on purpose. The
+# escape leaves a trailing newline behind, which here lands as the blank line
+# before `jobs:` rather than splitting the mapping in two.
+# github.workflow, not a literal. A concurrency group is REPO-WIDE, not
+# per-workflow, so a hardcoded `ci-<ref>` collides with any other workflow in
+# the repository that picked the same obvious name -- and with
+# cancel-in-progress that is not a queue, it is one workflow killing the other.
+#
+# dl-assessment-platform adopted the standard and its own CI started reporting
+# `cancelled` on every pull request: ours took the group and stopped theirs.
+# Adoption is supposed to add a gate, not silence one.
+concurrency:
+  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.ref }}
+
+jobs:
+  ci:
+    uses: datumlabsio/actions/.github/workflows/web-app.yml@v1.6.0
+    with:
+      # DES §11: coverage is reported in every phase and gated once the repo
+      # serves production. Flip it with `copier update -d phase=production`.
+      phase: "draft"
+
+
+  # DES §6. Archetype-independent: every repo can leak a credential, and every
+  # repo with code can carry an injection. gitleaks scans the commits this pull
+  # request adds; Semgrep scans the source.
+  security:
+    uses: datumlabsio/actions/.github/workflows/security-baseline.yml@v1.6.0
+    # A red check tells the author. It does not tell anyone to ROTATE, and by
+    # the time it goes red the secret is already pushed. These let the job file
+    # the finding as an issue in a private repo, which is what reaches Slack.
+    #
+    # The App behind them can do exactly one thing -- open an issue in that one
+    # repository -- so unlike the other App secrets, these are safe to make
+    # readable org-wide. If they are missing the job says so and exits clean.
+    secrets:
+      violation-app-id: ${{ secrets.DATUM_VIOLATION_APP_ID }}
+      violation-private-key: ${{ secrets.DATUM_VIOLATION_PRIVATE_KEY }}
+
+  # DES §3: a pre-commit config AND a CI stage that runs the same hooks. The
+  # second half was not true for most repos — the hooks check the WHOLE
+  # repository, but the stage that ran them lived inside python-ci. A pull
+  # request touching no Python folder skipped them, and a repo with no Python
+  # folder never ran them at all.
+  #
+  # Found on polaris: a multi-document manifest that check-yaml rejects reached
+  # `main` through a GREEN pull request, because it touched only gitops/ and the
+  # one job that runs the hooks was skipped by path filters.
+  #
+  # No `if:` and no path filter, deliberately — the same reasoning as `security`
+  # above. A gate reachable only from the files it checks is a gate that skips.
+  hooks:
+    uses: datumlabsio/actions/.github/workflows/pre-commit.yml@v1.6.0
+
+  # DES §6: the image is linted, built, inventoried and scanned before anyone
+  # merges. publish stays false here — a pull request must never push an image,
+  # and a fork's pull request must never be able to. Publishing belongs to the
+  # release, not to CI.
+  #
+  # packages: write is granted even though publish is false. A called workflow
+  # cannot request more permission than its caller holds, and that is checked at
+  # STARTUP, before any `if:` runs — so a job that will be skipped still has to
+  # be grantable, or the whole run dies with no log.
+  #
+  # One job per folder that ships a Dockerfile. A monorepo can hold more than
+  # one — a Next front end and a dlt pipeline both do — and picking a single
+  # winner meant the others were never built or scanned, silently, with the job
+  # still green.
+  container:
+    uses: datumlabsio/actions/.github/workflows/container-ci.yml@v1.6.0
+    permissions:
+      contents: read
+      packages: write
+    with:
+      publish: false

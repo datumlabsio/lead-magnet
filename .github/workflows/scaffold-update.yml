@@ -1,0 +1,26 @@
+name: scaffold-update
+
+# A scaffold release reaches this repo on its own (DES §2, B-55).
+#
+# It opens ONE pull request containing files re-rendered by `copier update` —
+# never a bumped version string on its own, which would leave this repo claiming
+# a scaffold version its files do not match.
+#
+# Nothing happens when the repo is already current, so a weekly run is silent.
+
+on:
+  schedule:
+    # Monday morning. Before `main-watch`, so a fix that arrives by scaffold is
+    # not reported as a broken `main` an hour later.
+    - cron: "0 5 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  scaffold-update:
+    uses: datumlabsio/actions/.github/workflows/scaffold-update.yml@v1.6.0
+    secrets:
+      app-id: ${{ secrets.DATUM_POLICE_APP_ID }}
+      private-key: ${{ secrets.DATUM_POLICE_PRIVATE_KEY }}
