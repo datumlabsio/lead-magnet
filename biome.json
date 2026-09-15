@@ -60,7 +60,9 @@
       "!**/coverage",
       "!**/node_modules",
       "!**/*.min.js",
-      "!**/pnpm-lock.yaml"
+      "!**/pnpm-lock.yaml",
+      "!**/public/m",
+      "!**/src/magnets/**/*.html"
     ]
   }
 }

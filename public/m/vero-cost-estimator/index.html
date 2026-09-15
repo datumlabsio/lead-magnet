@@ -1,0 +1,1308 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vero Cost Estimator · Datum Labs</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700;800&family=Lexend:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  /* =========================================================================
+     DATUM LABS VERO COST ESTIMATOR. Gated calculator component.
+
+     FLOW
+       1. Empty      no prefilled inputs, results sit at zero
+       2. Locked     all questions answered, results computed but blurred
+                       behind a centred "Unlock Full Report" button
+       3. Capture    modal collects work email, name and company
+       4. Unlocked   results revealed, modal shows the sent confirmation
+
+     CONTAINER: max-width 1240px, no outer padding. The parent Webflow
+     container owns horizontal gutters. Background is transparent so the
+     section background shows through (design is tuned for cream #fffcf7).
+     Everything is scoped under .dl-vero so it cannot collide with page CSS.
+     ========================================================================= */
+
+  .dl-vero *,
+  .dl-vero *::before,
+  .dl-vero *::after { box-sizing: border-box; }
+
+  .dl-vero {
+    /* ---- brand tokens ---- */
+    --cream:#fffcf7;
+    --ink-black:#171717;
+    --blue:#237fde;
+    --blue-deep:#1b63ad;
+    --coral:#f26d6d;
+    --green:#3ecf8e;        /* saving figures on the near-black hero */
+    --green-ink:#137a52;    /* saving figures on white and cream */
+    --ink:#0f0f0f;
+    --ink-soft:#4b4b4a;
+    --ink-mute:#7a7975;
+    --line:#e7e2d8;
+    --line-strong:#d8d2c4;
+    --white:#ffffff;
+    --lavender:#eef4ff;
+    --track:#f0ece3;
+    --shadow:0 2px 16px rgba(0,0,0,.08);
+    --r:14px;
+    --r-sm:10px;
+
+    /* Gap between the top of the viewport and the pinned results panel.
+       RAISE THIS to clear a fixed Webflow navbar, e.g. nav height + 24px. */
+    --dl-sticky-top:24px;
+
+    max-width:1240px;
+    width:100%;
+    margin:0 auto;
+    background:transparent;
+    color:var(--ink);
+    font-family:"Lexend",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    font-size:15px;
+    font-weight:400;
+    line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+    text-align:left;
+  }
+
+  .dl-vero h3 { font-family:"Poppins",sans-serif; font-weight:700; letter-spacing:-.02em; margin:0; }
+  .dl-vero p { margin:0; }
+
+  /* ---------- layout ---------- */
+  .dl-vero .dl-layout {
+    display:grid; grid-template-columns:1fr 1fr; gap:20px; align-items:start;
+  }
+
+  .dl-vero .dl-card {
+    background:var(--white);
+    border:1px solid var(--line);
+    border-left:4px solid var(--blue);
+    border-radius:var(--r);
+    box-shadow:var(--shadow);
+    padding:26px 26px 28px;
+  }
+  .dl-vero .dl-card-title { font-size:1.075rem; font-weight:600; margin-bottom:5px; }
+  .dl-vero .dl-card-sub {
+    margin-bottom:22px; color:var(--ink-mute);
+    font-size:.83rem; font-weight:300; line-height:1.55;
+  }
+
+  /* ---------- form ---------- */
+  .dl-vero .dl-field { margin-bottom:20px; }
+  .dl-vero .dl-field:last-child { margin-bottom:0; }
+  .dl-vero label.dl-q {
+    display:block; font-size:.885rem; font-weight:500; color:var(--ink); margin-bottom:2px;
+  }
+  .dl-vero .dl-help {
+    display:block; font-size:.775rem; color:var(--ink-mute);
+    font-weight:300; line-height:1.5; margin-bottom:9px;
+  }
+
+  .dl-vero input[type="number"],
+  .dl-vero input[type="text"],
+  .dl-vero input[type="email"],
+  .dl-vero select {
+    width:100%; padding:.72rem .9rem;
+    border:1px solid var(--line-strong); border-radius:var(--r-sm);
+    font:inherit; font-size:.93rem; font-weight:400;
+    background:var(--cream); color:var(--ink);
+    appearance:none; -webkit-appearance:none;
+    transition:border-color .15s;
+  }
+  .dl-vero input::placeholder { color:#a8a49c; }
+  .dl-vero input:hover, .dl-vero select:hover { border-color:var(--blue); }
+  .dl-vero select { color:var(--ink); }
+  .dl-vero select:invalid { color:#a8a49c; }
+  .dl-vero select {
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='9' viewBox='0 0 14 9'><path d='M1 1l6 6 6-6' fill='none' stroke='%234b4b4a' stroke-width='2' stroke-linecap='round'/></svg>");
+    background-repeat:no-repeat; background-position:right .95rem center; padding-right:2.5rem;
+  }
+  .dl-vero input:focus-visible,
+  .dl-vero select:focus-visible,
+  .dl-vero button:focus-visible,
+  .dl-vero summary:focus-visible {
+    outline:2px solid var(--blue); outline-offset:2px; border-color:var(--blue);
+  }
+  .dl-vero .dl-money { position:relative; }
+  .dl-vero .dl-money .dl-prefix {
+    position:absolute; left:.9rem; top:50%; transform:translateY(-50%);
+    color:var(--ink-mute); font-size:.93rem; pointer-events:none;
+  }
+  .dl-vero .dl-money input { padding-left:1.75rem; }
+
+  .dl-vero .dl-adv { margin-top:22px; border-top:1px solid var(--line); padding-top:18px; }
+  .dl-vero .dl-adv summary {
+    cursor:pointer; font-size:.855rem; font-weight:500; color:var(--blue);
+    list-style:none; padding:2px 0;
+  }
+  .dl-vero .dl-adv summary::-webkit-details-marker { display:none; }
+  .dl-vero .dl-adv summary::before { content:"+ "; font-weight:600; }
+  .dl-vero .dl-adv[open] summary::before { content:"– "; }
+  .dl-vero .dl-adv[open] summary { margin-bottom:16px; }
+  .dl-vero .dl-suggest {
+    margin-top:9px; background:none; border:none; padding:0;
+    color:var(--blue); font:inherit; font-size:.78rem; font-weight:500;
+    cursor:pointer; text-decoration:underline; text-underline-offset:3px;
+  }
+
+  .dl-vero .dl-assume {
+    margin-top:22px; padding:14px 16px;
+    background:var(--lavender); border-left:4px solid var(--blue);
+    border-radius:0 var(--r-sm) var(--r-sm) 0;
+    font-size:.785rem; font-weight:300; line-height:1.6; color:#1a3a5c;
+  }
+  .dl-vero .dl-assume strong { font-weight:600; color:#12335a; }
+
+  /* progress line under the card title */
+  .dl-vero .dl-progress {
+    display:flex; align-items:center; gap:10px; margin-bottom:22px;
+  }
+  .dl-vero .dl-progress-track {
+    flex:1; height:4px; background:var(--track); border-radius:99px; overflow:hidden;
+  }
+  .dl-vero .dl-progress-fill {
+    height:100%; width:0; background:var(--blue); border-radius:99px;
+    transition:width .3s cubic-bezier(.4,0,.2,1);
+  }
+  .dl-vero .dl-progress-label {
+    font-size:.72rem; font-weight:500; color:var(--ink-mute); white-space:nowrap;
+  }
+
+  /* ---------- results ---------- */
+  .dl-vero .dl-results { position:relative; }
+  .dl-vero .dl-results-inner { display:flex; flex-direction:column; gap:20px; }
+  /* The locked teaser caps this container's height. Without this the cards
+     would compress to fit instead of being clipped. */
+  .dl-vero .dl-results-inner > * { flex-shrink:0; }
+
+  .dl-vero .dl-hero {
+    position:relative; overflow:hidden;
+    background:var(--ink-black); color:var(--cream);
+    border-radius:var(--r); padding:30px 28px 26px;
+  }
+  .dl-vero .dl-hero::before {
+    content:""; position:absolute; inset:0; pointer-events:none;
+    background-image:
+      linear-gradient(rgba(255,255,255,.05) 1px,transparent 1px),
+      linear-gradient(90deg,rgba(255,255,255,.05) 1px,transparent 1px);
+    background-size:32px 32px;
+  }
+  .dl-vero .dl-hero > * { position:relative; z-index:1; }
+  .dl-vero .dl-hero .dl-kicker {
+    font-size:.665rem; font-weight:600; letter-spacing:.15em; text-transform:uppercase;
+    color:var(--blue); margin-bottom:10px;
+  }
+  .dl-vero .dl-hero.is-neg .dl-kicker { color:var(--coral); }
+  .dl-vero .dl-hero .dl-amount {
+    font-family:"Poppins",sans-serif; font-weight:800;
+    font-size:clamp(2.35rem,6.2vw,3.5rem); line-height:1.02; letter-spacing:-.035em;
+    margin-bottom:12px;
+  }
+  .dl-vero .dl-hero.is-live .dl-amount { color:var(--green); }
+  .dl-vero .dl-hero.is-neg .dl-amount { color:var(--coral); }
+  .dl-vero .dl-hero .dl-sub {
+    font-size:.83rem; font-weight:300; line-height:1.6;
+    color:rgba(255,255,255,.68); max-width:46ch;
+  }
+  .dl-vero .dl-strip {
+    display:grid; grid-template-columns:1fr 1fr; gap:18px;
+    margin-top:24px; padding-top:20px; border-top:1px solid rgba(255,255,255,.14);
+  }
+  .dl-vero .dl-strip .dl-v {
+    font-family:"Poppins",sans-serif; font-weight:700; font-size:1.5rem;
+    line-height:1.1; letter-spacing:-.025em; color:var(--cream);
+  }
+  .dl-vero .dl-strip .dl-k {
+    font-size:.72rem; font-weight:300; line-height:1.45;
+    color:rgba(255,255,255,.6); margin-top:5px;
+  }
+
+  /* comparison bars */
+  .dl-vero .dl-vs { display:flex; flex-direction:column; gap:20px; }
+  .dl-vero .dl-vs-head {
+    display:flex; justify-content:space-between; align-items:baseline; gap:12px; margin-bottom:8px;
+  }
+  .dl-vero .dl-vs-head .dl-who { font-size:.845rem; font-weight:500; color:var(--ink); }
+  .dl-vero .dl-vs-head .dl-amt {
+    font-family:"Poppins",sans-serif; font-weight:700; font-size:1.02rem; letter-spacing:-.02em;
+  }
+  .dl-vero .dl-track { height:12px; background:var(--track); border-radius:99px; overflow:hidden; }
+  .dl-vero .dl-fill {
+    height:100%; border-radius:99px; width:0;
+    transition:width .35s cubic-bezier(.4,0,.2,1);
+  }
+  .dl-vero .dl-fill.them { background:var(--coral); }
+  .dl-vero .dl-fill.us { background:var(--blue); }
+  .dl-vero .dl-vs-note {
+    margin-top:8px; font-size:.755rem; font-weight:300; line-height:1.5; color:var(--ink-mute);
+  }
+  .dl-vero .dl-note {
+    margin-top:20px; padding-top:16px; border-top:1px solid var(--line);
+    font-size:.83rem; font-weight:300; color:var(--ink-soft); line-height:1.6;
+  }
+  .dl-vero .dl-note strong { font-weight:600; color:var(--ink); }
+  .dl-vero .dl-note strong.dl-pos { color:var(--green-ink); }
+
+  /* timeline */
+  .dl-vero .dl-tl { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .dl-vero .dl-tl-col {
+    background:var(--cream); border:1px solid var(--line);
+    border-radius:var(--r-sm); padding:16px 16px 18px;
+  }
+  .dl-vero .dl-tl-col.us {
+    background:var(--lavender); border-color:#cfe0f7; border-top:4px solid var(--blue);
+  }
+  .dl-vero .dl-tl-col .dl-who {
+    font-size:.665rem; font-weight:600; letter-spacing:.12em; text-transform:uppercase;
+    color:var(--ink-mute); margin-bottom:8px;
+  }
+  .dl-vero .dl-tl-col.us .dl-who { color:var(--blue); }
+  .dl-vero .dl-tl-col .dl-big {
+    font-family:"Poppins",sans-serif; font-weight:700; font-size:1.28rem;
+    line-height:1.15; letter-spacing:-.025em; margin-bottom:7px;
+  }
+  .dl-vero .dl-tl-col.us .dl-big { color:var(--blue-deep); }
+  .dl-vero .dl-tl-col .dl-cap { font-size:.735rem; font-weight:300; line-height:1.5; color:var(--ink-mute); }
+  .dl-vero .dl-tl-col.us .dl-cap { color:#3f5f86; }
+
+  /* metric grid */
+  .dl-vero .dl-metrics { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+  .dl-vero .dl-metric {
+    background:var(--white); border:1px solid var(--line); border-top:3px solid var(--blue);
+    border-radius:var(--r-sm); padding:15px 14px 16px;
+  }
+  .dl-vero .dl-metric .dl-v {
+    font-family:"Poppins",sans-serif; font-weight:700; font-size:1.13rem;
+    line-height:1.15; letter-spacing:-.025em; margin-bottom:5px;
+  }
+  .dl-vero .dl-metric .dl-k { font-size:.7rem; font-weight:300; line-height:1.4; color:var(--ink-mute); }
+  .dl-vero .dl-metric .dl-v.is-pos { color:var(--green-ink); }
+  .dl-vero .dl-metric .dl-v.is-neg { color:var(--coral); }
+
+  /* ---------- the gate ---------- */
+  .dl-vero.is-locked .dl-results-inner {
+    filter:blur(11px);
+    pointer-events:none;
+    user-select:none;
+    -webkit-user-select:none;
+  }
+  .dl-vero .dl-gate {
+    position:absolute; inset:0; z-index:5;
+    display:flex; align-items:center; justify-content:center;
+    padding:24px;
+    background:linear-gradient(to bottom, rgba(255,252,247,.30), rgba(255,252,247,.72));
+    border-radius:var(--r);
+  }
+  .dl-vero .dl-gate[hidden] { display:none; }
+  .dl-vero .dl-gate-inner {
+    text-align:center; max-width:340px;
+    background:var(--white);
+    border:1px solid var(--line);
+    border-radius:var(--r);
+    box-shadow:0 8px 30px rgba(23,23,23,.14);
+    padding:26px 24px 24px;
+  }
+  .dl-vero .dl-gate-icon {
+    width:44px; height:44px; margin:0 auto 14px;
+    display:flex; align-items:center; justify-content:center;
+    background:var(--lavender); border-radius:11px; color:var(--blue);
+  }
+  .dl-vero .dl-gate-title {
+    font-family:"Poppins",sans-serif; font-weight:700; font-size:1.05rem;
+    letter-spacing:-.02em; margin-bottom:7px;
+  }
+  .dl-vero .dl-gate-text {
+    font-size:.815rem; font-weight:300; line-height:1.55;
+    color:var(--ink-soft); margin-bottom:18px;
+  }
+
+  /* ---------- buttons ---------- */
+  .dl-vero .dl-btn {
+    display:inline-flex; align-items:center; justify-content:center; gap:8px;
+    background:var(--blue); color:#fff;
+    border:none; border-radius:var(--r-sm);
+    padding:.8rem 1.3rem;
+    font:inherit; font-size:.885rem; font-weight:500;
+    cursor:pointer; transition:background .15s, transform .08s;
+  }
+  .dl-vero .dl-btn:hover { background:var(--blue-deep); }
+  .dl-vero .dl-btn:active { transform:translateY(1px); }
+  .dl-vero .dl-btn[disabled] { background:#b9cfe9; cursor:not-allowed; transform:none; }
+  .dl-vero .dl-btn-block { width:100%; }
+
+  /* ---------- capture modal ---------- */
+  .dl-vero .dl-modal {
+    position:fixed; inset:0; z-index:9999;
+    display:flex; align-items:center; justify-content:center;
+    padding:20px;
+  }
+  .dl-vero .dl-modal[hidden] { display:none; }
+  .dl-vero .dl-modal-backdrop {
+    position:absolute; inset:0;
+    background:rgba(23,23,23,.55);
+    -webkit-backdrop-filter:blur(3px); backdrop-filter:blur(3px);
+  }
+  .dl-vero .dl-modal-card {
+    position:relative; z-index:1;
+    width:100%; max-width:440px;
+    max-height:calc(100vh - 40px); overflow-y:auto;
+    background:var(--white);
+    border-radius:16px;
+    box-shadow:0 24px 60px rgba(23,23,23,.28);
+    padding:34px 30px 26px;
+    text-align:center;
+    animation:dlPop .18s cubic-bezier(.4,0,.2,1);
+  }
+  @keyframes dlPop { from { opacity:0; transform:translateY(10px) scale(.98); } }
+  .dl-vero .dl-modal-x {
+    position:absolute; top:12px; right:12px;
+    width:30px; height:30px; padding:0;
+    display:flex; align-items:center; justify-content:center;
+    background:none; border:none; border-radius:8px;
+    color:var(--ink-mute); font-size:1.15rem; line-height:1; cursor:pointer;
+  }
+  .dl-vero .dl-modal-x:hover { background:var(--track); color:var(--ink); }
+  .dl-vero .dl-modal-card h3 {
+    font-size:1.22rem; margin-bottom:9px; color:var(--ink);
+  }
+  .dl-vero .dl-modal-sub {
+    font-size:.855rem; font-weight:300; line-height:1.6;
+    color:var(--ink-soft); margin-bottom:24px;
+  }
+  .dl-vero .dl-modal-sub strong { font-weight:600; color:var(--blue); }
+
+  .dl-vero .dl-mfield { text-align:left; margin-bottom:15px; }
+  .dl-vero .dl-mrow { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .dl-vero .dl-mlabel {
+    display:block; font-size:.795rem; font-weight:500; margin-bottom:6px; color:var(--ink);
+  }
+  .dl-vero .dl-req { color:var(--coral); }
+  .dl-vero .dl-merr {
+    display:none; margin-top:5px; font-size:.735rem; font-weight:400; color:#d2453f;
+  }
+  .dl-vero .dl-mfield.has-error input:not([type="checkbox"]) {
+    border-color:#d2453f; background:#fdf5f5;
+  }
+  .dl-vero .dl-mfield.has-error .dl-check input[type="checkbox"] {
+    outline:2px solid #d2453f; outline-offset:2px; border-radius:3px;
+  }
+  .dl-vero .dl-mfield.has-error .dl-merr { display:block; }
+
+  .dl-vero .dl-check {
+    display:flex; align-items:flex-start; gap:9px;
+    text-align:left; margin:4px 0 0;
+    font-size:.755rem; font-weight:300; line-height:1.5; color:var(--ink-mute);
+  }
+  .dl-vero .dl-check input {
+    width:15px; height:15px; margin:2px 0 0; flex:none;
+    accent-color:var(--blue); cursor:pointer;
+  }
+  .dl-vero .dl-modal-foot {
+    margin-top:14px; font-size:.715rem; font-weight:300; color:var(--ink-mute);
+  }
+
+  /* success state */
+  .dl-vero .dl-redirect {
+    margin-top:14px; font-size:.735rem; font-weight:300; color:var(--ink-mute);
+  }
+  .dl-vero .dl-done-mail {
+    display:inline-block; margin-top:2px;
+    font-weight:500; color:var(--blue); word-break:break-all;
+  }
+
+  /* ---------- sticky questions card (two-column widths only) ----------
+     The questions card is the shorter of the two columns, so it is the one
+     that pins. It stays in place while the taller results column scrolls
+     past, keeping the inputs reachable while the numbers are read.
+
+     align-self:start is required. Without it the grid item stretches to the
+     full row height and has no room to travel. The results column is left
+     in normal flow. */
+  @media (min-width:941px){
+    .dl-vero .dl-questions {
+      position:sticky;
+      top:var(--dl-sticky-top);
+      align-self:start;
+    }
+  }
+
+  /* ---------- responsive ---------- */
+  @media (max-width:940px){
+    .dl-vero .dl-layout { grid-template-columns:1fr; gap:18px; }
+    /* Single column, so nothing pins here. .dl-results keeps its default
+       position:relative, which the gate overlay is positioned against. */
+    /* The blurred column is tall here, so hold the gate near the top
+       where it is reachable without scrolling past it. */
+    .dl-vero .dl-gate { align-items:flex-start; padding-top:64px; }
+    .dl-vero.is-locked .dl-results-inner { max-height:520px; overflow:hidden; }
+  }
+  @media (max-width:680px){
+    .dl-vero { font-size:14.5px; }
+    .dl-vero .dl-card { padding:22px 20px 24px; }
+    .dl-vero .dl-hero { padding:26px 22px 24px; }
+    .dl-vero .dl-metrics { grid-template-columns:repeat(2,1fr); }
+    .dl-vero .dl-tl { grid-template-columns:1fr; }
+    .dl-vero .dl-gate { padding:16px; padding-top:48px; }
+    .dl-vero .dl-gate-inner { padding:22px 20px 20px; }
+    .dl-vero .dl-modal { padding:12px; }
+    .dl-vero .dl-modal-card { padding:28px 22px 22px; max-height:calc(100vh - 24px); }
+    .dl-vero .dl-modal-card h3 { font-size:1.12rem; }
+  }
+  @media (max-width:430px){
+    .dl-vero .dl-strip { grid-template-columns:1fr; gap:14px; }
+    .dl-vero .dl-metrics { grid-template-columns:1fr; }
+    .dl-vero .dl-vs-head { flex-direction:column; align-items:flex-start; gap:2px; }
+    .dl-vero .dl-mrow { grid-template-columns:1fr; gap:0; }
+    .dl-vero .dl-mrow .dl-mfield { margin-bottom:15px; }
+    .dl-vero.is-locked .dl-results-inner { max-height:440px; }
+  }
+  @media (prefers-reduced-motion:reduce){
+    .dl-vero *, .dl-vero .dl-modal-card { transition:none !important; animation:none !important; }
+  }
+
+  /* Standalone preview only. Ignore once embedded. */
+  body.dl-preview { margin:0; padding:56px 24px; background:#fffcf7; }
+</style>
+</head>
+<body class="dl-preview">
+
+<!-- =========================================================================
+     COMPONENT STARTS HERE
+     ========================================================================= -->
+<div class="dl-vero" id="dlVero">
+  <div class="dl-layout">
+
+    <!-- ---------------- questions ---------------- -->
+    <div class="dl-card dl-questions">
+      <h3 class="dl-card-title">Tell us about your data stack</h3>
+      <p class="dl-card-sub">Six questions, about a minute. Nothing is stored until you ask for the report.</p>
+
+      <div class="dl-progress">
+        <div class="dl-progress-track"><div class="dl-progress-fill" id="dlProgressFill"></div></div>
+        <span class="dl-progress-label" id="dlProgressLabel">0 of 6 answered</span>
+      </div>
+
+      <div class="dl-field">
+        <label class="dl-q" for="dlPipelines">Data sources to connect</label>
+        <span class="dl-help">Databases, SaaS tools, APIs, file drops, and anything else that has to land in the warehouse.</span>
+        <input type="number" id="dlPipelines" placeholder="e.g. 6" min="1" max="100" step="1" inputmode="numeric">
+      </div>
+
+      <div class="dl-field">
+        <label class="dl-q" for="dlSize">Warehouse data size</label>
+        <span class="dl-help">Roughly how much data you expect to hold. This drives engineering difficulty, not just storage.</span>
+        <select id="dlSize" required>
+          <option value="" disabled selected>Select a size...</option>
+          <option value="u10gb">under 10 GB</option>
+          <option value="u100gb">10 to 100 GB</option>
+          <option value="u500gb">100 to 500 GB</option>
+          <option value="u1tb">500 GB to 1 TB</option>
+          <option value="u5tb">1 to 5 TB</option>
+          <option value="u10tb">5 to 10 TB</option>
+          <option value="u50tb">10 to 50 TB</option>
+          <option value="o50tb">over 50 TB</option>
+        </select>
+      </div>
+
+      <div class="dl-field">
+        <label class="dl-q" for="dlCadence">How fresh does the data need to be?</label>
+        <span class="dl-help">Near real-time is a different architecture, not a faster schedule, so it costs accordingly.</span>
+        <select id="dlCadence" required>
+          <option value="" disabled selected>Select a sync interval...</option>
+          <option value="weekly">weekly</option>
+          <option value="daily">daily</option>
+          <option value="hourly">hourly</option>
+          <option value="realtime">near real-time</option>
+        </select>
+      </div>
+
+      <div class="dl-field">
+        <label class="dl-q" for="dlKpis">KPIs to calculate</label>
+        <span class="dl-help">Metrics that need to be agreed, modelled once and trusted everywhere they appear.</span>
+        <input type="number" id="dlKpis" placeholder="e.g. 12" min="0" max="300" step="1" inputmode="numeric">
+      </div>
+
+      <div class="dl-field">
+        <label class="dl-q" for="dlEngineers">Data engineers you would hire to do this yourself</label>
+        <span class="dl-help">The team you would need to stand this up and keep it running.</span>
+        <input type="number" id="dlEngineers" placeholder="e.g. 2" min="1" max="10" step="1" inputmode="numeric">
+      </div>
+
+      <div class="dl-field">
+        <label class="dl-q" for="dlSalary">Base salary per engineer</label>
+        <span class="dl-help">Base only. We add <span id="dlLoadPct">30</span>% for benefits, payroll tax, equipment and tooling.</span>
+        <div class="dl-money">
+          <span class="dl-prefix">$</span>
+          <input type="number" id="dlSalary" placeholder="130,000" min="0" max="500000" step="5000" inputmode="numeric">
+        </div>
+      </div>
+
+      <details class="dl-adv">
+        <summary>Advanced: cloud and tooling spend</summary>
+        <div class="dl-field">
+          <label class="dl-q" for="dlInfra">Warehouse, ingestion and BI spend, $/mo</label>
+          <span class="dl-help">Paid to your cloud and tool vendors either way, so it is excluded from the saving.
+            Leave blank and we will estimate it from your answers.</span>
+          <div class="dl-money">
+            <span class="dl-prefix">$</span>
+            <input type="number" id="dlInfra" placeholder="estimated from your answers" min="0" max="100000" step="25" inputmode="numeric">
+          </div>
+          <button type="button" class="dl-suggest" id="dlSuggestInfra">Use our estimate: <span id="dlSuggestVal">$0</span>/mo</button>
+        </div>
+      </details>
+
+      <div class="dl-assume">
+        <strong>What we assume.</strong> A fully loaded engineer costs
+        <span id="dlALoad">1.30×</span> base salary. Hiring one takes about
+        <span id="dlALag">3 months</span>, and a new hire runs at half output for their first
+        <span id="dlARamp">3 months</span>. We assume <span id="dlACap">120</span> productive hours a month
+        on this project per engineer, once ramped.
+      </div>
+    </div>
+
+    <!-- ---------------- results ---------------- -->
+    <div class="dl-results" id="dlResults">
+      <div class="dl-results-inner" id="dlResultsInner">
+
+        <div class="dl-hero" id="dlHero">
+          <div class="dl-kicker" id="dlKicker">Estimated year-one saving</div>
+          <div class="dl-amount" id="dlOutSave">$0</div>
+          <div class="dl-sub" id="dlOutSaveSub">Answer the questions on the left and your estimate will build here.</div>
+          <div class="dl-strip">
+            <div>
+              <div class="dl-v" id="dlOutHoursFreed">0</div>
+              <div class="dl-k">engineering hours your team never spends, year one</div>
+            </div>
+            <div>
+              <div class="dl-v" id="dlOutSooner">0</div>
+              <div class="dl-k">sooner to a working stack</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="dl-card">
+          <h3 class="dl-card-title">Year one, side by side</h3>
+          <p class="dl-card-sub">People cost only. Cloud and tooling spend is excluded, because you pay it either way.</p>
+          <div class="dl-vs">
+            <div>
+              <div class="dl-vs-head"><span class="dl-who" id="dlVsThemWho">In-house team</span><span class="dl-amt" id="dlVsThemAmt">$0</span></div>
+              <div class="dl-track"><div class="dl-fill them" id="dlVsThemBar"></div></div>
+              <div class="dl-vs-note" id="dlVsThemNote">Fully loaded payroll, less the months spent hiring.</div>
+            </div>
+            <div>
+              <div class="dl-vs-head"><span class="dl-who">Datum Labs</span><span class="dl-amt" id="dlVsUsAmt">$0</span></div>
+              <div class="dl-track"><div class="dl-fill us" id="dlVsUsBar"></div></div>
+              <div class="dl-vs-note" id="dlVsUsNote">Build plus twelve months of maintenance.</div>
+            </div>
+          </div>
+          <p class="dl-note" id="dlVsSummary">Your comparison will appear here once every question is answered.</p>
+        </div>
+
+        <div class="dl-card">
+          <h3 class="dl-card-title">Time to a working stack</h3>
+          <p class="dl-card-sub">From decision to first trusted dashboard</p>
+          <div class="dl-tl">
+            <div class="dl-tl-col">
+              <div class="dl-who">In-house</div>
+              <div class="dl-big" id="dlTlThem">0</div>
+              <div class="dl-cap" id="dlTlThemCap">Hiring, then building, at reduced output while they ramp.</div>
+            </div>
+            <div class="dl-tl-col us">
+              <div class="dl-who">With Datum Labs</div>
+              <div class="dl-big" id="dlTlUs">0</div>
+              <div class="dl-cap" id="dlTlUsCap">A team that has built this before, starting the week you sign.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="dl-metrics">
+          <div class="dl-metric"><div class="dl-v" id="dlMThreeYear">$0</div><div class="dl-k">saved over three years</div></div>
+          <div class="dl-metric"><div class="dl-v" id="dlMPctOf">0%</div><div class="dl-k">of the in-house cost</div></div>
+          <div class="dl-metric"><div class="dl-v" id="dlMBreakEven">0</div><div class="dl-k">cheaper than hiring from</div></div>
+          <div class="dl-metric"><div class="dl-v" id="dlMEngMonths">0</div><div class="dl-k">engineer-months freed, year one</div></div>
+          <div class="dl-metric"><div class="dl-v" id="dlMMonthly">0</div><div class="dl-k">hours a month we absorb</div></div>
+          <div class="dl-metric"><div class="dl-v" id="dlMGoLive">0</div><div class="dl-k">working days to go live</div></div>
+        </div>
+
+      </div>
+
+      <!-- the gate, shown once every question is answered -->
+      <div class="dl-gate" id="dlGate" hidden>
+        <div class="dl-gate-inner">
+
+          <div id="dlGateAsk">
+            <div class="dl-gate-icon">
+              <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+              </svg>
+            </div>
+            <div class="dl-gate-title">Your estimate is ready</div>
+            <p class="dl-gate-text">Unlock the full breakdown: the year-one and three-year numbers,
+              both timelines and the worked math behind them.</p>
+            <button type="button" class="dl-btn dl-btn-block" id="dlUnlockBtn">Unlock Full Report</button>
+          </div>
+
+          <div id="dlGateSent" hidden>
+            <div class="dl-gate-title">Your report is on its way</div>
+            <p class="dl-gate-text">We have emailed it to
+              <span class="dl-done-mail" id="dlGateEmail">you@company.com</span>.
+              It usually lands within a minute.</p>
+            <button type="button" class="dl-btn dl-btn-block" id="dlGateGo">Continue to Vero</button>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ---------------- capture modal ---------------- -->
+  <div class="dl-modal" id="dlModal" hidden>
+    <div class="dl-modal-backdrop" data-dl-close></div>
+    <div class="dl-modal-card" role="dialog" aria-modal="true" aria-labelledby="dlModalTitle">
+      <button type="button" class="dl-modal-x" data-dl-close aria-label="Close">&#10005;</button>
+
+      <!-- form -->
+      <div id="dlModalForm">
+        <h3 id="dlModalTitle">Unlock your full report</h3>
+        <p class="dl-modal-sub">See your full year-one and three-year numbers, both timelines
+          and the worked math behind them.</p>
+
+        <div class="dl-mfield" id="dlFieldEmail">
+          <label class="dl-mlabel" for="dlEmail">Work email <span class="dl-req">*</span></label>
+          <input type="email" id="dlEmail" placeholder="you@company.com" autocomplete="email">
+          <span class="dl-merr" id="dlErrEmail">Enter a valid work email address.</span>
+        </div>
+
+        <div class="dl-mrow">
+          <div class="dl-mfield" id="dlFieldFirst">
+            <label class="dl-mlabel" for="dlFirst">First name <span class="dl-req">*</span></label>
+            <input type="text" id="dlFirst" autocomplete="given-name">
+            <span class="dl-merr">Enter your first name.</span>
+          </div>
+          <div class="dl-mfield" id="dlFieldLast">
+            <label class="dl-mlabel" for="dlLast">Last name <span class="dl-req">*</span></label>
+            <input type="text" id="dlLast" autocomplete="family-name">
+            <span class="dl-merr">Enter your last name.</span>
+          </div>
+        </div>
+
+        <div class="dl-mfield" id="dlFieldCompany">
+          <label class="dl-mlabel" for="dlCompany">Company <span class="dl-req">*</span></label>
+          <input type="text" id="dlCompany" autocomplete="organization">
+          <span class="dl-merr" id="dlErrCompany">Let us know where you work.</span>
+        </div>
+
+        <div class="dl-mfield" id="dlFieldConsent">
+          <label class="dl-check">
+            <input type="checkbox" id="dlConsent">
+            <span>I agree to receive communications from Datum Labs about my estimate.
+              You can unsubscribe at any time. <span class="dl-req">*</span></span>
+          </label>
+          <span class="dl-merr">Please tick this box to continue.</span>
+        </div>
+
+        <button type="button" class="dl-btn dl-btn-block" id="dlSubmit">Get My Report</button>
+        <p class="dl-modal-foot">We will email you a copy of this report. No spam, unsubscribe anytime.</p>
+      </div>
+
+      <!-- success -->
+      <div id="dlModalDone" hidden>
+        <h3>Your report is on its way</h3>
+        <p class="dl-modal-sub">We have sent it to<br>
+          <span class="dl-done-mail" id="dlDoneEmail">you@company.com</span><br>
+          It usually lands within a minute. Check your spam folder if it does not.</p>
+        <button type="button" class="dl-btn dl-btn-block" id="dlGoNow">Continue to Vero</button>
+        <p class="dl-redirect">Taking you there in <span id="dlCount">4</span> seconds.</p>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+<!-- ========================= COMPONENT ENDS HERE ========================= -->
+
+<script>
+(() => {
+  'use strict';
+
+  /* =======================================================================
+     MODEL CONSTANTS. Edit these to retune. Nothing else needs to change.
+     ======================================================================= */
+
+  // Our delivery model
+  var RATE = 70;                      // blended $/hr for build and maintenance
+  var HOURS_PER_PIPELINE = 12;        // build hours per source
+  var MODEL_HOURS_PER_PIPELINE = 10;  // dbt modeling hours per source
+  var BI_SETUP_HOURS = 8;             // one-off BI connection, access, theming
+  var HOURS_PER_KPI = 2.5;            // define, model and test one metric
+  var DISCOVERY_HOURS = 12;           // discovery, IAM, access setup
+  var POD_HOURS_PER_DAY = 18;         // 3 engineers x 6 focused hours, sets our timeline
+
+  // The in-house comparison
+  var LOADED_MULT       = 1.30;  // benefits, payroll tax, equipment, tooling seats
+  var HIRE_LAG_MONTHS   = 3;     // search, interview, notice period. Unpaid, so a time cost only
+  var RAMP_MONTHS       = 3;     // a new hire's first months on an unfamiliar stack
+  var RAMP_OUTPUT       = 0.5;   // output during ramp
+  var ENG_HRS_PER_MONTH = 120;   // productive hours on this project, once ramped
+  var WORK_DAYS_MONTH   = 21.7;
+
+  // Warehouse size lookup. Each row sets several factors at once.
+  var SIZE = {
+    u10gb:  { label: 'under 10 GB',    warehouseHrs:  8, modelMult: 0.75, maintMult: 0.80, infraBase: 100 },
+    u100gb: { label: '10 to 100 GB',   warehouseHrs: 12, modelMult: 0.85, maintMult: 0.90, infraBase: 250 },
+    u500gb: { label: '100 to 500 GB',  warehouseHrs: 16, modelMult: 0.95, maintMult: 0.95, infraBase: 400 },
+    u1tb:   { label: '500 GB to 1 TB', warehouseHrs: 18, modelMult: 1.00, maintMult: 1.00, infraBase: 600 },
+    u5tb:   { label: '1 to 5 TB',      warehouseHrs: 22, modelMult: 1.15, maintMult: 1.10, infraBase: 1000 },
+    u10tb:  { label: '5 to 10 TB',     warehouseHrs: 26, modelMult: 1.25, maintMult: 1.20, infraBase: 1600 },
+    u50tb:  { label: '10 to 50 TB',    warehouseHrs: 32, modelMult: 1.45, maintMult: 1.30, infraBase: 2600 },
+    o50tb:  { label: 'over 50 TB',     warehouseHrs: 40, modelMult: 1.70, maintMult: 1.45, infraBase: 4500 }
+  };
+
+  // Sync cadence lookup. premiumHrs is one-off streaming engineering:
+  // CDC, replay, exactly-once, alerting.
+  var CADENCE = {
+    weekly:   { label: 'weekly',         orchHrs: 0,  premiumHrs: 0,   maintMult: 0.80, infraMult: 0.80 },
+    daily:    { label: 'daily',          orchHrs: 16, premiumHrs: 0,   maintMult: 1.00, infraMult: 1.00 },
+    hourly:   { label: 'hourly',         orchHrs: 24, premiumHrs: 0,   maintMult: 1.35, infraMult: 1.40 },
+    realtime: { label: 'near real-time', orchHrs: 32, premiumHrs: 150, maintMult: 1.60, infraMult: 1.90 }
+  };
+
+  // Where the visitor lands once the report has been sent.
+  var REDIRECT_URL = 'https://datumlabs.io/vero';
+  var REDIRECT_DELAY_MS = 4000;
+
+  // The six questions that must be answered before the estimate is produced.
+  var REQUIRED = ['dlPipelines','dlSize','dlCadence','dlKpis','dlEngineers','dlSalary'];
+
+  /* ======================= state ======================= */
+
+  /* ---- lead-magnet integration ----
+     PAGE_LOADED_AT feeds the API's timing check, which rejects submissions made
+     faster than a person can type. UTMs are read from this page's own query
+     string: embedded in an iframe that is the iframe src, so whoever pastes the
+     embed decides the attribution. */
+  var PAGE_LOADED_AT = Date.now();
+  var MAGNET_SLUG = 'vero-cost-estimator';
+  var LEAD_ENDPOINT = '/api/lead';
+
+  function utmFromUrl() {
+    var keys = ['utm_source','utm_medium','utm_campaign','utm_term','utm_content','gclid','fbclid','ref'];
+    var params = new URLSearchParams(window.location.search);
+    var out = {};
+    for (var k = 0; k < keys.length; k++) {
+      var v = params.get(keys[k]);
+      if (v) out[keys[k]] = v;
+    }
+    return out;
+  }
+
+  var root = document.getElementById('dlVero');
+  var captured = false;      // true once the lead has been submitted
+  var lastResult = null;     // most recent computed figures, for the payload
+
+  // The report is delivered by email and the visitor is sent on to the Vero
+  // page, so the figures stay masked on screen even after capture. Flip this
+  // to true if you ever want the numbers revealed in place instead.
+  var REVEAL_ON_PAGE = false;
+  function revealed() { return captured && REVEAL_ON_PAGE; }
+
+  /* ======================= helpers ======================= */
+
+  var $ = (id) => document.getElementById(id);
+  var num = (id) => parseFloat($(id).value) || 0;
+  var int = (id) => parseInt($(id).value, 10) || 0;
+  var filled = (id) => String($(id).value).trim() !== '';
+
+  var money = (n) => new Intl.NumberFormat('en-US', {
+      style: 'currency', currency: 'USD', maximumFractionDigits: 0
+    }).format(n);
+  var monthsFmt = (m) => {
+    if (m < 1) return Math.max(1, Math.round(m * WORK_DAYS_MONTH)) + ' working days';
+    if (m < 2) return 'about a month';
+    return Math.round(m) + ' months';
+  };
+
+  function answeredCount() {
+    var n = 0;
+    for (var i = 0; i < REQUIRED.length; i++) if (filled(REQUIRED[i])) n++;
+    return n;
+  }
+  function isComplete() {
+    if (answeredCount() < REQUIRED.length) return false;
+    return int('dlPipelines') >= 1 && int('dlEngineers') >= 1 && num('dlSalary') > 0;
+  }
+
+  // Cloud spend is optional. Fall back to the estimate when it is left blank.
+  function suggestedInfra() {
+    var size = SIZE[$('dlSize').value];
+    var cadence = CADENCE[$('dlCadence').value];
+    if (!size || !cadence) return 0;
+    var raw = size.infraBase * cadence.infraMult + int('dlPipelines') * 15;
+    return Math.round(raw / 25) * 25;
+  }
+  function infraValue() {
+    return filled('dlInfra') ? num('dlInfra') : suggestedInfra();
+  }
+
+  // How long an in-house team needs to deliver `hours` of build work, allowing for ramp.
+  function inHouseBuildMonths(hours, engineers) {
+    var done = 0;
+    for (var m = 1; m <= 120; m++) {
+      done += engineers * ENG_HRS_PER_MONTH * (m <= RAMP_MONTHS ? RAMP_OUTPUT : 1);
+      if (done >= hours) return m;
+    }
+    return 120;
+  }
+
+  // First month where our cumulative spend sits below what the in-house team has cost by then.
+  function breakEvenMonth(buildTotal, retainer, monthlyPayroll) {
+    for (var m = 1; m <= 36; m++) {
+      var ours = buildTotal + retainer * (m - 1);
+      var theirs = monthlyPayroll * Math.max(0, m - HIRE_LAG_MONTHS);
+      if (theirs > 0 && ours <= theirs) return m;
+    }
+    return null;
+  }
+
+  /* ======================= calculation ======================= */
+
+  function compute() {
+    var pipelines = int('dlPipelines');
+    var kpis      = int('dlKpis');
+    var engineers = Math.max(1, int('dlEngineers'));
+    var salary    = num('dlSalary');
+    var infra     = infraValue();
+    var size      = SIZE[$('dlSize').value];
+    var cadence   = CADENCE[$('dlCadence').value];
+
+    // ---- our build hours, six categories ----
+    var kpiHrs = kpis > 0 ? BI_SETUP_HOURS + kpis * HOURS_PER_KPI : 0;
+
+    var totalHours =
+        pipelines * HOURS_PER_PIPELINE                        // pipeline build
+      + pipelines * MODEL_HOURS_PER_PIPELINE * size.modelMult // data modeling
+      + kpiHrs                                                // KPIs and reporting setup
+      + DISCOVERY_HOURS + cadence.orchHrs                     // deployment
+      + size.warehouseHrs                                     // warehouse setup
+      + cadence.premiumHrs;                                   // real-time engineering
+
+    var buildLabor = totalHours * RATE;
+
+    // ---- our monthly upkeep ----
+    var maintHrs = (2 + pipelines * 1.2) * cadence.maintMult * size.maintMult + kpis * 0.1;
+    var maintLabor = maintHrs * RATE;
+    var retainer = maintLabor + infra;          // invoiced monthly, incl. pass-through cloud
+    var buildTotal = buildLabor + retainer;     // build + first month
+
+    // Our fee with pass-through cloud spend stripped out, so both sides compare people only.
+    var ourFeeY1 = buildLabor + maintLabor * 12;
+    var ourFeeY3 = buildLabor + maintLabor * 36;
+
+    // ---- the in-house alternative ----
+    var loadedAnnual = salary * LOADED_MULT;
+    var payrollMonth = (loadedAnnual / 12) * engineers;
+
+    // Conservative: no salary charged during the hiring gap, because nobody is on payroll yet.
+    var theirsY1 = payrollMonth * Math.max(0, 12 - HIRE_LAG_MONTHS);
+    var theirsY3 = payrollMonth * Math.max(0, 36 - HIRE_LAG_MONTHS);
+
+    // ---- timelines ----
+    var theirBuildMonths = inHouseBuildMonths(totalHours, engineers);
+    var theirLiveMonths  = HIRE_LAG_MONTHS + theirBuildMonths;
+    var ourDays          = Math.max(1, Math.ceil(totalHours / POD_HOURS_PER_DAY));
+    var soonerMonths     = Math.max(0, theirLiveMonths - ourDays / WORK_DAYS_MONTH);
+    var hoursFreedY1     = totalHours + maintHrs * 12;
+
+    return {
+      pipelines:pipelines, kpis:kpis, engineers:engineers, salary:salary, infra:infra,
+      size:size, cadence:cadence,
+      totalHours:totalHours, maintHrs:maintHrs,
+      ourFeeY1:ourFeeY1, ourFeeY3:ourFeeY3,
+      loadedAnnual:loadedAnnual, theirsY1:theirsY1, theirsY3:theirsY3,
+      saveY1:theirsY1 - ourFeeY1, saveY3:theirsY3 - ourFeeY3,
+      theirBuildMonths:theirBuildMonths, theirLiveMonths:theirLiveMonths,
+      ourDays:ourDays, soonerMonths:soonerMonths,
+      hoursFreedY1:hoursFreedY1, engMonthsFreed:hoursFreedY1 / ENG_HRS_PER_MONTH,
+      breakEven:breakEvenMonth(buildTotal, retainer, payrollMonth)
+    };
+  }
+
+  /* ======================= paint ======================= */
+
+  function paint(c) {
+    var engineers = c.engineers;
+
+    var up = c.saveY1 >= 0;
+    $('dlHero').classList.add('is-live');
+    $('dlHero').classList.toggle('is-neg', !up);
+
+    // No sign on the figure. Colour and the kicker carry the direction.
+    $('dlKicker').textContent = up
+      ? 'Estimated year-one saving' : 'Estimated year-one difference';
+    $('dlOutSave').textContent = money(Math.abs(c.saveY1));
+    $('dlOutSaveSub').textContent = c.saveY1 >= 0
+      ? 'against ' + engineers + ' in-house data engineer' + (engineers === 1 ? '' : 's')
+        + ' at ' + money(c.salary) + ' base. Cloud and tooling spend is excluded from both sides.'
+      : 'At this scope an in-house team of ' + engineers + ' is the cheaper option on paper. '
+        + 'The trade is ' + monthsFmt(c.soonerMonths) + ' of delay before anything works.';
+
+    $('dlOutHoursFreed').textContent = Math.round(c.hoursFreedY1).toLocaleString('en-US');
+    $('dlOutSooner').textContent = c.soonerMonths >= 1
+      ? Math.round(c.soonerMonths) + ' month' + (Math.round(c.soonerMonths) === 1 ? '' : 's')
+      : Math.max(1, Math.round(c.soonerMonths * WORK_DAYS_MONTH)) + ' days';
+
+    var vsMax = Math.max(c.theirsY1, c.ourFeeY1, 1);
+    $('dlVsThemWho').textContent = engineers + ' in-house engineer' + (engineers === 1 ? '' : 's');
+    $('dlVsThemAmt').textContent = money(c.theirsY1);
+    $('dlVsThemBar').style.width = (c.theirsY1 / vsMax * 100).toFixed(1) + '%';
+    $('dlVsThemNote').textContent = money(c.loadedAnnual) + ' fully loaded each, paid for '
+      + (12 - HIRE_LAG_MONTHS) + ' of the 12 months. The first ' + HIRE_LAG_MONTHS + ' go to hiring.';
+
+    $('dlVsUsAmt').textContent = money(c.ourFeeY1);
+    $('dlVsUsBar').style.width = (c.ourFeeY1 / vsMax * 100).toFixed(1) + '%';
+    $('dlVsUsNote').textContent = 'Build plus twelve months of maintenance, at ' + money(RATE) + '/hr blended.';
+
+    $('dlVsSummary').innerHTML = up
+      ? 'You keep <strong class="dl-pos">' + money(c.saveY1)
+        + '</strong> in year one and still have the stack running.'
+      : 'Year one costs <strong>' + money(-c.saveY1) + '</strong> more with us, and lands '
+        + monthsFmt(c.soonerMonths) + ' earlier.';
+
+    $('dlTlThem').textContent = monthsFmt(c.theirLiveMonths);
+    $('dlTlThemCap').textContent = HIRE_LAG_MONTHS + ' months to hire, then ' + c.theirBuildMonths
+      + ' month' + (c.theirBuildMonths === 1 ? '' : 's') + ' to build, at half output for the first '
+      + RAMP_MONTHS + ' while they learn your systems.';
+    $('dlTlUs').textContent = c.ourDays + (c.ourDays === 1 ? ' working day' : ' working days');
+    $('dlTlUsCap').textContent = 'A team that has built this before, starting the week you sign. '
+      + 'No hiring, no ramp.';
+
+    $('dlMThreeYear').textContent = money(Math.abs(c.saveY3));
+    $('dlMThreeYear').className = 'dl-v ' + (c.saveY3 >= 0 ? 'is-pos' : 'is-neg');
+    $('dlMPctOf').textContent = c.theirsY1 > 0 ? Math.round(c.ourFeeY1 / c.theirsY1 * 100) + '%' : '0%';
+    $('dlMBreakEven').textContent = c.breakEven ? 'Month ' + c.breakEven : 'Over 3 yrs';
+    $('dlMEngMonths').textContent = c.engMonthsFreed.toFixed(1);
+    $('dlMMonthly').textContent = c.maintHrs.toFixed(1);
+    $('dlMGoLive').textContent = c.ourDays;
+  }
+
+  /* ======================= masked (locked) paint =======================
+     The blur is only cosmetic. Real figures must not be in the DOM while the
+     report is locked, or they can be read by selecting the text, opening
+     devtools, or with a screen reader. So the locked state paints masks and
+     the real numbers are only written once the lead has been captured. */
+
+  var DOT3 = '\u2022\u2022\u2022';
+  var DOTM = '$\u2022\u2022\u2022,\u2022\u2022\u2022';
+
+  function paintMasked() {
+    $('dlHero').classList.remove('is-live', 'is-neg');
+    $('dlKicker').textContent = 'Estimated year-one saving';
+    $('dlOutSave').textContent = DOTM;
+    $('dlOutSaveSub').textContent = 'Your figures are ready. Unlock the report to see them.';
+    $('dlOutHoursFreed').textContent = DOT3;
+    $('dlOutSooner').textContent = DOT3;
+
+    $('dlVsThemWho').textContent = 'In-house team';
+    $('dlVsThemAmt').textContent = DOTM;
+    $('dlVsUsAmt').textContent = DOTM;
+    // Decorative widths only. The real ratio would give the answer away.
+    $('dlVsThemBar').style.width = '100%';
+    $('dlVsUsBar').style.width = '34%';
+    $('dlVsThemNote').textContent = 'Fully loaded payroll, less the months spent hiring.';
+    $('dlVsUsNote').textContent = 'Build plus twelve months of maintenance.';
+    $('dlVsSummary').textContent = 'Unlock the report to see the year-one comparison.';
+
+    $('dlTlThem').textContent = DOT3;
+    $('dlTlUs').textContent = DOT3;
+    $('dlTlThemCap').textContent = 'Hiring, then building, at reduced output while they ramp.';
+    $('dlTlUsCap').textContent = 'A team that has built this before, starting the week you sign.';
+
+    $('dlMThreeYear').textContent = DOTM;
+    $('dlMThreeYear').className = 'dl-v';
+    $('dlMPctOf').textContent = '\u2022\u2022%';
+    $('dlMBreakEven').textContent = DOT3;
+    $('dlMEngMonths').textContent = DOT3;
+    $('dlMMonthly').textContent = DOT3;
+    $('dlMGoLive').textContent = DOT3;
+  }
+
+  /* ======================= state machine ======================= */
+
+  /* The gate can land outside the viewport, especially on single-column
+     widths where the results sit below the questions. Bring it into view
+     once, after typing settles, and only if it is not already visible. */
+  var scrollTimer = null, hasAutoScrolled = false;
+  function maybeScrollToGate() {
+    if (hasAutoScrolled || captured) return;
+    clearTimeout(scrollTimer);
+    scrollTimer = setTimeout(() => {
+      hasAutoScrolled = true;
+      var el = root.querySelector('.dl-gate-inner');
+      if (!el) return;
+      var r = el.getBoundingClientRect();
+      if (r.top >= 0 && r.bottom <= (window.innerHeight || document.documentElement.clientHeight)) return;
+      var smooth = !window.matchMedia('(prefers-reduced-motion:reduce)').matches;
+      el.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto', block: 'center' });
+    }, 700);
+  }
+
+  function refresh() {
+    var n = answeredCount();
+    $('dlProgressFill').style.width = (n / REQUIRED.length * 100) + '%';
+    $('dlProgressLabel').textContent = n + ' of ' + REQUIRED.length + ' answered';
+
+    var s = suggestedInfra();
+    $('dlSuggestVal').textContent = s ? money(s) : '$0';
+    $('dlSuggestInfra').disabled = !s;
+
+    if (!isComplete()) {
+      // Nothing to show yet, so leave the zeroed empty state in place.
+      lastResult = null;
+      clearTimeout(scrollTimer);
+      root.classList.remove('is-locked');
+      $('dlGate').hidden = true;
+      return;
+    }
+
+    // Always compute: the figures go in the capture payload either way.
+    lastResult = compute();
+
+    // Masked unless REVEAL_ON_PAGE is on, so the numbers never reach the DOM.
+    if (revealed()) paint(lastResult); else paintMasked();
+
+    root.classList.toggle('is-locked', !revealed());
+    $('dlGate').hidden = revealed();
+    maybeScrollToGate();
+  }
+
+  /* ======================= modal ======================= */
+
+  var modal = $('dlModal');
+  var lastFocus = null;
+  var scrollLocked = false;
+
+  function openModal() {
+    lastFocus = document.activeElement;
+    modal.hidden = false;
+    if (!scrollLocked) {
+      document.body.style.overflow = 'hidden';
+      scrollLocked = true;
+    }
+    var first = $('dlEmail');
+    if (first && !$('dlModalForm').hidden) setTimeout(() => { first.focus(); }, 40);
+  }
+  function closeModal() {
+    clearInterval(countTimer);   // dismissing the modal cancels the redirect
+    modal.hidden = true;
+    if (scrollLocked) { document.body.style.overflow = ''; scrollLocked = false; }
+    if (lastFocus && lastFocus.focus) lastFocus.focus();
+  }
+
+  var closers = modal.querySelectorAll('[data-dl-close]');
+  for (var ci = 0; ci < closers.length; ci++) {
+    closers[ci].addEventListener('click', closeModal);
+  }
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !modal.hidden) closeModal();
+  });
+
+  $('dlUnlockBtn').addEventListener('click', openModal);
+
+  /* ======================= lead capture ======================= */
+
+  var EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+  // input id -> the wrapper that carries the error state
+  var FIELD_OF = {
+    dlEmail:   'dlFieldEmail',
+    dlFirst:   'dlFieldFirst',
+    dlLast:    'dlFieldLast',
+    dlCompany: 'dlFieldCompany'
+  };
+
+  function setError(fieldId, on) {
+    $(fieldId).classList.toggle('has-error', !!on);
+  }
+
+  function validate() {
+    var ok = true;
+
+    var emailOk = EMAIL_RE.test($('dlEmail').value.trim());
+    setError('dlFieldEmail', !emailOk);
+    if (!emailOk) ok = false;
+
+    ['dlFirst','dlLast','dlCompany'].forEach((id) => {
+      var good = $(id).value.trim() !== '';
+      setError(FIELD_OF[id], !good);
+      if (!good) ok = false;
+    });
+
+    var consented = $('dlConsent').checked;
+    setError('dlFieldConsent', !consented);
+    if (!consented) ok = false;
+
+    return ok;
+  }
+
+  // Once a field has been flagged, re-check it as the user types.
+  Object.keys(FIELD_OF).forEach((id) => {
+    $(id).addEventListener('input', () => {
+      if ($(FIELD_OF[id]).classList.contains('has-error')) validate();
+    });
+  });
+  $('dlConsent').addEventListener('change', () => {
+    if ($('dlFieldConsent').classList.contains('has-error')) validate();
+  });
+
+  /* -----------------------------------------------------------------------
+     Submits the lead to this app's API, which records it, renders the
+     personalised PDF and emails it as an attachment.
+
+     Resolving continues to the success state and the redirect below; rejecting
+     shows the inline error. Both are already wired by this page, so nothing
+     else here needed to change.
+     ----------------------------------------------------------------------- */
+  function submitLead(payload) {
+    return fetch(LEAD_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        magnet: MAGNET_SLUG,
+        data: payload,
+        utm: utmFromUrl(),
+        elapsedMs: Date.now() - PAGE_LOADED_AT
+      })
+    }).then((response) => response.json().catch(() => ({})).then((body) => {
+        if (!response.ok || !body.ok) {
+          throw new Error(body.message || ('Request failed: ' + response.status));
+        }
+      }));
+  }
+
+  function buildPayload() {
+    var c = lastResult || {};
+    return {
+      email:             $('dlEmail').value.trim(),
+      firstname:         $('dlFirst').value.trim(),
+      lastname:          $('dlLast').value.trim(),
+      company:           $('dlCompany').value.trim(),
+      marketing_consent: $('dlConsent').checked,
+      // inputs
+      data_sources:      c.pipelines,
+      warehouse_size:    c.size ? c.size.label : '',
+      sync_cadence:      c.cadence ? c.cadence.label : '',
+      // Raw <select> values as well as their labels. The server rebuilds the
+      // estimate for the PDF from these keys, so it never has to match on
+      // display text that a copy edit could change.
+      warehouse_size_key: $('dlSize').value,
+      sync_cadence_key:   $('dlCadence').value,
+      kpi_count:         c.kpis,
+      inhouse_engineers: c.engineers,
+      engineer_salary:   c.salary,
+      cloud_spend_month: c.infra,
+      // outputs
+      saving_year_one:   c.saveY1 ? Math.round(c.saveY1) : 0,
+      saving_three_year: c.saveY3 ? Math.round(c.saveY3) : 0,
+      hours_freed_y1:    c.hoursFreedY1 ? Math.round(c.hoursFreedY1) : 0,
+      engineer_months:   c.engMonthsFreed ? +c.engMonthsFreed.toFixed(1) : 0,
+      inhouse_cost_y1:   c.theirsY1 ? Math.round(c.theirsY1) : 0,
+      datumlabs_cost_y1: c.ourFeeY1 ? Math.round(c.ourFeeY1) : 0,
+      days_to_live:      c.ourDays,
+      breakeven_month:   c.breakEven || null
+    };
+  }
+
+  /* ======================= redirect after sending ======================= */
+
+  var countTimer = null;
+
+  // Break out of an iframe where the browser allows it, so the visitor lands
+  // on the real page rather than inside the embedded widget.
+  function goToVero() {
+    clearInterval(countTimer);
+    try {
+      if (window.top && window.top !== window.self) {
+        window.top.location.href = REDIRECT_URL;
+        return;
+      }
+    } catch (e) { /* cross-origin parent, fall through */ }
+    window.location.href = REDIRECT_URL;
+  }
+
+  function startRedirect() {
+    var left = Math.round(REDIRECT_DELAY_MS / 1000);
+    $('dlCount').textContent = left;
+    clearInterval(countTimer);
+    countTimer = setInterval(() => {
+      left -= 1;
+      if (left <= 0) { goToVero(); return; }
+      $('dlCount').textContent = left;
+    }, 1000);
+  }
+
+  $('dlGoNow').addEventListener('click', goToVero);
+  $('dlGateGo').addEventListener('click', goToVero);
+
+  $('dlSubmit').addEventListener('click', function () {
+    if (!validate()) return;
+
+    $('dlErrEmail').textContent = 'Enter a valid work email address.';
+    this.disabled = true;
+    this.textContent = 'Sending...';
+
+    submitLead(buildPayload()).then(() => {
+      captured = true;
+      var addr = $('dlEmail').value.trim();
+
+      // The figures stay masked: the full report goes to the inbox. The gate
+      // swaps to a confirmation so it no longer invites another unlock.
+      if (revealed()) {
+        paint(lastResult);
+        root.classList.remove('is-locked');
+        $('dlGate').hidden = true;
+      } else {
+        $('dlGateAsk').hidden = true;
+        $('dlGateSent').hidden = false;
+        $('dlGateEmail').textContent = addr;
+      }
+
+      $('dlDoneEmail').textContent = addr;
+      $('dlModalForm').hidden = true;
+      $('dlModalDone').hidden = false;
+      modal.querySelector('.dl-modal-card').scrollTop = 0;
+
+      startRedirect();
+    }).catch(() => {
+      this.disabled = false;
+      this.textContent = 'Get My Report';
+      setError('dlFieldEmail', true);
+      $('dlErrEmail').textContent = 'Something went wrong. Please try again.';
+    });
+  });
+
+  /* ======================= wiring ======================= */
+
+  $('dlSuggestInfra').addEventListener('click', () => {
+    var s = suggestedInfra();
+    if (s) { $('dlInfra').value = s; refresh(); }
+  });
+
+  $('dlLoadPct').textContent = Math.round((LOADED_MULT - 1) * 100);
+  $('dlALoad').textContent = LOADED_MULT.toFixed(2) + '×';
+  $('dlALag').textContent = HIRE_LAG_MONTHS + ' months';
+  $('dlARamp').textContent = RAMP_MONTHS + ' months';
+  $('dlACap').textContent = ENG_HRS_PER_MONTH;
+
+  var inputs = root.querySelectorAll('.dl-layout input, .dl-layout select');
+  for (var i = 0; i < inputs.length; i++) {
+    inputs[i].addEventListener('input', refresh);
+    inputs[i].addEventListener('change', refresh);
+  }
+
+  refresh();
+})();
+</script>
+</body>
+</html>

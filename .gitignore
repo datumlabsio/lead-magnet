@@ -12,3 +12,8 @@ dist/
 .next/
 coverage/
 *.tsbuildinfo
+
+# Local secrets. Never committed.
+.env
+.env.local
+.env*.local
