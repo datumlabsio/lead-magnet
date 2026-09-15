@@ -39,6 +39,12 @@ were sunset in 2022.
 > `https://app-na2.hubspot.com`, not `https://app.hubspot.com`. A link without
 > the `-na2` will not resolve to this account. Check the address bar if you are
 > ever unsure which one you are on.
+>
+> Hub ID `39612998`. Direct links for this portal:
+>
+> - Private apps: <https://app-na2.hubspot.com/private-apps/39612998>
+> - Contact properties: <https://app-na2.hubspot.com/property-settings/39612998/contact>
+> - Users & teams: <https://app-na2.hubspot.com/settings/39612998/users>
 
 > **You must be a Super Admin.** If **Private Apps** is not in the settings
 > sidebar, that is almost always why — the menu item is hidden rather than
