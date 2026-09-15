@@ -22,7 +22,17 @@ const nextConfig: NextConfig = {
   // tracer cannot see them — nothing imports them — and they are missing from
   // the deployed function.
   outputFileTracingIncludes: {
-    "/api/lead": ["./src/magnets/**/*.html"],
+    "/api/lead": [
+      "./src/magnets/**/*.html",
+      // Chromium's payload is opened by path at runtime, so the tracer cannot
+      // see it — it follows imports, and nothing imports a .br archive. The
+      // JS ships without it and the function fails on first render with
+      // "The input directory .../bin does not exist".
+      //
+      // The glob spans pnpm's content-addressed layout so a version bump does
+      // not silently stop matching.
+      "./node_modules/.pnpm/@sparticuz+chromium@*/node_modules/@sparticuz/chromium/bin/**",
+    ],
   },
 
   async rewrites() {
