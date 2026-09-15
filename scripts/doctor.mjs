@@ -86,7 +86,49 @@ for (const name of [...REQUIRED, ...OPTIONAL]) {
 
 section("Supabase");
 
-if (env("SUPABASE_URL") && env("SUPABASE_SERVICE_ROLE_KEY")) {
+/**
+ * Works out which key is configured, without printing it.
+ *
+ * This check exists because the failure it catches is close to invisible. RLS is
+ * on with no policies, so an anon key querying `leads` returns zero rows and no
+ * error - the table looks reachable and healthy. Every real insert would then be
+ * rejected in production, losing every lead, while this doctor reported green.
+ *
+ * Supabase has two key generations: legacy JWTs carrying a `role` claim, and
+ * newer `sb_secret_` / `sb_publishable_` prefixed keys.
+ */
+function supabaseKeyRole(key) {
+  if (key.startsWith("sb_secret_")) return "service_role";
+  if (key.startsWith("sb_publishable_")) return "anon";
+  const parts = key.split(".");
+  if (parts.length !== 3) return "unknown";
+  try {
+    const payload = JSON.parse(Buffer.from(parts[1], "base64url").toString("utf8"));
+    return payload.role ?? "unknown";
+  } catch {
+    return "unknown";
+  }
+}
+
+const supabaseKey = env("SUPABASE_SERVICE_ROLE_KEY");
+if (supabaseKey) {
+  const role = supabaseKeyRole(supabaseKey);
+  if (role === "service_role") {
+    pass("key is a service role / secret key");
+  } else if (role === "anon") {
+    fail(
+      "SUPABASE_SERVICE_ROLE_KEY holds the ANON / PUBLISHABLE key",
+      "Use the secret key instead: Project Settings -> API Keys -> Secret keys (sb_secret_..., formerly service_role). The anon key cannot write leads or sign downloads, and RLS makes it fail silently rather than loudly.",
+    );
+  } else {
+    warn(
+      `could not identify the Supabase key type (${role})`,
+      "Confirm it is the secret / service_role key, not the publishable one",
+    );
+  }
+}
+
+if (env("SUPABASE_URL") && supabaseKey) {
   const supabase = createClient(env("SUPABASE_URL"), env("SUPABASE_SERVICE_ROLE_KEY"), {
     auth: { persistSession: false, autoRefreshToken: false },
   });

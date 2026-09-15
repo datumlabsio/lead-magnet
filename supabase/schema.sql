@@ -39,6 +39,14 @@ alter table public.leads enable row level security;
 
 -- Private bucket for the magnet assets. Private is the default and the point:
 -- the emailed link is a time-limited signature, so a forwarded link expires.
+--
+-- NOTE: current Supabase projects restrict direct writes to storage.buckets, so
+-- this statement can fail with a row-level security error even in the SQL
+-- editor. That failure is expected and harmless. If it happens, create the
+-- bucket instead via Storage -> New bucket, named `magnets`, with Public OFF.
+--
+-- `pnpm run doctor` reports whether the bucket exists and whether it is private,
+-- so there is no need to guess which path worked.
 insert into storage.buckets (id, name, public)
 values ('magnets', 'magnets', false)
 on conflict (id) do nothing;
