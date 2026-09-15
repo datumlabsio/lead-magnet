@@ -1,6 +1,6 @@
 import path from "node:path";
 import react from "@vitejs/plugin-react";
-import { defineConfig } from "vitest/config";
+import { configDefaults, defineConfig } from "vitest/config";
 
 export default defineConfig({
   plugins: [react()],
@@ -9,6 +9,11 @@ export default defineConfig({
   },
   test: {
     environment: "jsdom",
+    // A standalone build copies src/ — test files and all — into
+    // .next/standalone, where vitest would collect them a second time. That
+    // inflates the test count, double-counts coverage, and lets a stale build
+    // keep reporting a test the source no longer has.
+    exclude: [...configDefaults.exclude, "**/.next/**"],
     coverage: {
       provider: "v8",
       include: ["src/**/*.{ts,tsx}"],
