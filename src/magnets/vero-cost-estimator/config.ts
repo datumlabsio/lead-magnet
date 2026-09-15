@@ -26,7 +26,7 @@ function float(fields: Record<string, string>, key: string): number {
 export const veroCostEstimator: MagnetConfig = {
   slug: "vero-cost-estimator",
   name: "Vero Cost Estimator",
-  published: false,
+  published: true,
 
   report: {
     filename: "Vero cost estimate — {company}.pdf",

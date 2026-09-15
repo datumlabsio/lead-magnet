@@ -157,14 +157,25 @@ Run it again after changing anything in Supabase, Resend or HubSpot.
 
 ### What to hand over
 
-Put these four things in one place — a folder, a Drive link, a message:
+Put it all in one place — a folder, a Drive link, a message.
+
+**Always:**
 
 1. **The landing page** — the HTML file, plus its images/CSS folders if it has them.
-2. **The file you are giving away** — the PDF, guide, checklist, template.
-3. **A short name** — e.g. "SEO Audit Checklist". The web address gets derived from it.
-4. **The email people receive** — subject line, and what the email should say.
+2. **A short name** — e.g. "SEO Audit Checklist". The web address gets derived from it.
+3. **The email people receive** — subject line, and what the email should say.
 
-If you do not have the email copy, say so and ask for a draft.
+**Then, depending on the kind:**
+
+4. For a **download**: the file itself — the PDF, guide, checklist, template.
+5. For a **generated report**: the report template, exactly as the designer
+   exported it. Do not try to tidy it up or unpack it first; hand over the file
+   you were given. If the export is missing a logo or a font, the agent will say
+   so — that is worth knowing before it reaches a customer's inbox.
+
+If you do not have the email copy, say so and ask for a draft. You can use
+`{{firstname}}`, `{{lastname}}` and `{{company}}` anywhere in it and they get
+filled in per person. Markdown links work too: `[book a call](https://…)`.
 
 ### Then say this to the coding agent
 
