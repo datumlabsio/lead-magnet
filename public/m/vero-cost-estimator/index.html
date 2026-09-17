@@ -531,10 +531,10 @@
 
       <div class="dl-field">
         <label class="dl-q" for="dlSalary">Base salary per engineer</label>
-        <span class="dl-help">Base only. We add <span id="dlLoadPct">30</span>% for benefits, payroll tax, equipment and tooling.</span>
+        <span class="dl-help">This is the engineer's annual base salary</span>
         <div class="dl-money">
           <span class="dl-prefix">$</span>
-          <input type="number" id="dlSalary" placeholder="130,000" min="0" max="500000" step="5000" inputmode="numeric">
+          <input type="number" id="dlSalary" placeholder="130,000" min="60000" max="500000" step="5000" inputmode="numeric">
         </div>
       </div>
 
@@ -1289,7 +1289,6 @@
     if (s) { $('dlInfra').value = s; refresh(); }
   });
 
-  $('dlLoadPct').textContent = Math.round((LOADED_MULT - 1) * 100);
   $('dlALoad').textContent = LOADED_MULT.toFixed(2) + '×';
   $('dlALag').textContent = HIRE_LAG_MONTHS + ' months';
   $('dlARamp').textContent = RAMP_MONTHS + ' months';
