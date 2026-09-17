@@ -79,10 +79,9 @@ export const veroCostEstimator: MagnetConfig = {
     heading: "Your Vero cost estimate is attached",
     body: [
       "Hi {{firstname}},",
-      "Thanks for running the numbers on your data stack. Your personalized cost estimate is attached as a PDF, built entirely from what you told us, with the full math and assumptions laid out so you can check every line against your own numbers.",
-      "Inside, you'll find what building this in-house would cost you in year one and over three years, how that compares to Vero, the engineering hours you'd get back, and how much sooner you'd have a working stack.",
-      "No need to take our word for it. It's all worked through step by step in the attachment.",
-      "If the numbers look right, [book 30 minutes with me](https://www.datumlabs.io/vero#v-book). Same person who'd scope and build your stack, no salesperson, no pitch deck.",
+      "Attached below is your number. It shows what building this yourself would actually cost you, worked out line by line for your situation specifically.",
+      "Most people are only guessing at this, but you don't have to guess anymore. Take a look and see what stands out to you.",
+      "If it lands the way you'd expect, [grab 30 minutes with me](https://www.datumlabs.io/vero?utm_source=lead_magnet&utm_medium=cost_of_bad_data_calculator). I'm the one who'd actually build it. I'll show you exactly how we'd close that gap.",
       "Nidal",
       "Datum Labs, Vero",
     ],
