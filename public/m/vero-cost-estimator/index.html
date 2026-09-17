@@ -91,6 +91,8 @@
   /* ---------- form ---------- */
   .dl-vero .dl-field { margin-bottom:20px; }
   .dl-vero .dl-field:last-child { margin-bottom:0; }
+  .dl-vero .dl-field.has-error input { border-color:#d2453f; background:#fdf5f5; }
+  .dl-vero .dl-field.has-error .dl-merr { display:block; }
   .dl-vero label.dl-q {
     display:block; font-size:.885rem; font-weight:500; color:var(--ink); margin-bottom:2px;
   }
@@ -529,13 +531,14 @@
         <input type="number" id="dlEngineers" placeholder="e.g. 2" min="1" max="10" step="1" inputmode="numeric">
       </div>
 
-      <div class="dl-field">
+      <div class="dl-field" id="dlFieldSalary">
         <label class="dl-q" for="dlSalary">Base salary per engineer</label>
         <span class="dl-help">This is the engineer's annual base salary</span>
         <div class="dl-money">
           <span class="dl-prefix">$</span>
           <input type="number" id="dlSalary" placeholder="130,000" min="60000" max="500000" step="5000" inputmode="numeric">
         </div>
+        <span class="dl-merr" id="dlErrSalary">Enter an amount between $60,000 and $500,000.</span>
       </div>
 
       <details class="dl-adv">
@@ -1317,8 +1320,20 @@
     inputs[i].addEventListener('change', refresh);
   }
 
-  // Typed values outside the salary field's range are silently accepted by
-  // the browser (min/max only govern the stepper), so clamp on blur.
+  // min/max on a number input only govern the stepper, not the keyboard, so
+  // flag out-of-range values as they're typed and clamp once focus leaves.
+  function salaryOutOfRange() {
+    var el = $('dlSalary');
+    if (el.value === '') return false;
+    var v = Number(el.value);
+    if (isNaN(v)) return false;
+    return v < Number(el.min) || v > Number(el.max);
+  }
+
+  $('dlSalary').addEventListener('input', function () {
+    setError('dlFieldSalary', salaryOutOfRange());
+  });
+
   $('dlSalary').addEventListener('blur', function () {
     if (this.value === '') return;
     var typed = Number(this.value);
@@ -1330,6 +1345,7 @@
       this.value = clamped;
       refresh();
     }
+    setError('dlFieldSalary', false);
   });
 
   refresh();
