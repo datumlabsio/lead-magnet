@@ -71,10 +71,18 @@ function hoursFrom(seconds: number): string {
   return `${days} day${days === 1 ? "" : "s"}`;
 }
 
+const LOGO_URL =
+  "https://cdn.prod.website-files.com/664ccb500a0a738eb90f5fd6/6a997f97268d206af0045b43_Vero%20by%20Datumlabs%20white.png";
+
 function shell(inner: string): string {
   return `<!doctype html>
-<html lang="en"><body style="margin:0;padding:24px;background:#f5f5f5;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:12px;">
+<html lang="en"><body style="margin:0;padding:24px;background:#fffcf7;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;margin:0 auto;background:#fffcf7;border-radius:12px;">
+    <tr>
+      <td style="background:#171717;border-radius:12px 12px 0 0;padding:28px 32px;text-align:center;">
+        <img src="${LOGO_URL}" width="300" alt="Vero by Datum Labs" style="display:block;margin:0 auto;width:300px;max-width:300px;height:auto;border:0;">
+      </td>
+    </tr>
     <tr><td style="padding:32px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:16px;line-height:1.55;color:#1a1a1a;">
 ${inner}
     </td></tr>
