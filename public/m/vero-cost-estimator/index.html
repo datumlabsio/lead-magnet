@@ -672,7 +672,7 @@
         <div class="dl-mfield" id="dlFieldEmail">
           <label class="dl-mlabel" for="dlEmail">Work email <span class="dl-req">*</span></label>
           <input type="email" id="dlEmail" placeholder="you@company.com" autocomplete="email">
-          <span class="dl-merr" id="dlErrEmail">Enter a valid work email address.</span>
+          <span class="dl-merr" id="dlErrEmail">Enter a valid business email address (not Gmail, Yahoo, etc.).</span>
         </div>
 
         <div class="dl-mrow">
@@ -1114,6 +1114,22 @@
 
   var EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
+  // Personal/free email providers. The report is gated on a work email, so
+  // these domains fail validation even though they are well-formed addresses.
+  var PERSONAL_EMAIL_DOMAINS = [
+    'gmail.com', 'googlemail.com', 'yahoo.com', 'yahoo.co.uk', 'yahoo.co.in',
+    'hotmail.com', 'hotmail.co.uk', 'outlook.com', 'live.com', 'msn.com',
+    'aol.com', 'icloud.com', 'me.com', 'mac.com', 'protonmail.com', 'proton.me',
+    'gmx.com', 'gmx.net', 'yandex.com', 'yandex.ru', 'mail.com', 'zoho.com',
+    'qq.com', '163.com', '126.com', 'naver.com', 'rediffmail.com', 'inbox.com',
+    'fastmail.com', 'hey.com'
+  ];
+
+  function isBusinessEmail(email) {
+    var domain = email.split('@').pop().toLowerCase();
+    return PERSONAL_EMAIL_DOMAINS.indexOf(domain) === -1;
+  }
+
   // input id -> the wrapper that carries the error state
   var FIELD_OF = {
     dlEmail:   'dlFieldEmail',
@@ -1129,7 +1145,8 @@
   function validate() {
     var ok = true;
 
-    var emailOk = EMAIL_RE.test($('dlEmail').value.trim());
+    var emailVal = $('dlEmail').value.trim();
+    var emailOk = EMAIL_RE.test(emailVal) && isBusinessEmail(emailVal);
     setError('dlFieldEmail', !emailOk);
     if (!emailOk) ok = false;
 
@@ -1248,7 +1265,7 @@
   $('dlSubmit').addEventListener('click', function () {
     if (!validate()) return;
 
-    $('dlErrEmail').textContent = 'Enter a valid work email address.';
+    $('dlErrEmail').textContent = 'Enter a valid business email address (not Gmail, Yahoo, etc.).';
     this.disabled = true;
     this.textContent = 'Sending...';
 
