@@ -1317,6 +1317,21 @@
     inputs[i].addEventListener('change', refresh);
   }
 
+  // Typed values outside the salary field's range are silently accepted by
+  // the browser (min/max only govern the stepper), so clamp on blur.
+  $('dlSalary').addEventListener('blur', function () {
+    if (this.value === '') return;
+    var typed = Number(this.value);
+    if (isNaN(typed)) return;
+    var min = Number(this.min);
+    var max = Number(this.max);
+    var clamped = Math.min(max, Math.max(min, typed));
+    if (clamped !== typed) {
+      this.value = clamped;
+      refresh();
+    }
+  });
+
   refresh();
 })();
 </script>
