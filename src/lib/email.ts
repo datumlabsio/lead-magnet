@@ -76,7 +76,7 @@ const LOGO_URL =
 
 function shell(inner: string): string {
   return `<!doctype html>
-<html lang="en"><body style="margin:0;padding:24px;background:#fffcf7;">
+<html lang="en"><body style="margin:0;padding:24px;background:#ddd;">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;margin:0 auto;background:#fffcf7;border-radius:12px;">
     <tr>
       <td style="background:#171717;border-radius:12px 12px 0 0;padding:28px 32px;text-align:center;">
@@ -86,6 +86,11 @@ function shell(inner: string): string {
     <tr><td style="padding:32px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:16px;line-height:1.55;color:#1a1a1a;">
 ${inner}
     </td></tr>
+    <tr>
+      <td style="background:#171717;border-radius:0 0 12px 12px;padding:20px 32px;text-align:center;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;line-height:1.5;color:#fffcf7;">
+        Datum Labs, Office # 1 - Sheridan, WY, United States, WY, Sheridan
+      </td>
+    </tr>
   </table>
 </body></html>`;
 }
