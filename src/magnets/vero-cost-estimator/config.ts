@@ -81,7 +81,7 @@ export const veroCostEstimator: MagnetConfig = {
       "Hi {{firstname}},",
       "Attached below is your number. It shows what building this yourself would actually cost you, worked out line by line for your situation specifically.",
       "Most people are only guessing at this, but you don't have to guess anymore. Take a look and see what stands out to you.",
-      "If it lands the way you'd expect, [grab 30 minutes with me](https://www.datumlabs.io/vero#v-book). I'm the one who'd actually build it. I'll show you exactly how we'd close that gap.",
+      "If it lands the way you'd expect, [grab 30 minutes with me](https://www.datumlabs.io/vero?utm_source=lead_magnet&utm_medium=cost_of_bad_data_calculator#v-book). I'm the one who'd actually build it. I'll show you exactly how we'd close that gap.",
       "Nidal",
       "Datum Labs, Vero",
     ],
