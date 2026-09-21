@@ -115,17 +115,55 @@ export const veroCostEstimator: MagnetConfig = {
     // only the ones sales would segment on are pushed to HubSpot.
     { name: "warehouse_size_key", label: "Warehouse size (key)", maxLength: 20 },
     { name: "sync_cadence_key", label: "Sync cadence (key)", maxLength: 20 },
-    { name: "data_sources", label: "Data sources", maxLength: 10 },
-    { name: "warehouse_size", label: "Warehouse size", maxLength: 40 },
-    { name: "sync_cadence", label: "Sync cadence", maxLength: 40 },
-    { name: "kpi_count", label: "KPIs", maxLength: 10 },
-    { name: "inhouse_engineers", label: "In-house engineers", maxLength: 10 },
-    { name: "engineer_salary", label: "Engineer salary", maxLength: 12 },
+    {
+      name: "data_sources",
+      label: "Data sources",
+      hubspotProperty: "vero_est_data_sources",
+      maxLength: 10,
+    },
+    {
+      name: "warehouse_size",
+      label: "Warehouse size",
+      hubspotProperty: "vero_est_warehouse_size",
+      maxLength: 40,
+    },
+    {
+      name: "sync_cadence",
+      label: "Sync cadence",
+      hubspotProperty: "vero_est_sync_cadence",
+      maxLength: 40,
+    },
+    {
+      name: "kpi_count",
+      label: "KPIs",
+      hubspotProperty: "vero_est_kpi_count",
+      maxLength: 10,
+    },
+    {
+      name: "inhouse_engineers",
+      label: "In-house engineers",
+      hubspotProperty: "vero_est_inhouse_engineers",
+      maxLength: 10,
+    },
+    {
+      name: "engineer_salary",
+      label: "Engineer salary",
+      hubspotProperty: "vero_est_engineer_salary",
+      maxLength: 12,
+    },
     { name: "cloud_spend_month", label: "Cloud spend / month", maxLength: 12 },
 
     // Computed by the page. Stored for analysis only — the report recomputes
     // everything from the inputs above rather than trusting these.
-    { name: "saving_year_one", label: "Saving, year one (reported)", maxLength: 16 },
+    // The figure the page computed. Safe to send as-is: model.test.ts proves
+    // the server's recomputation agrees across the whole input space, so this
+    // cannot show sales a different number from the one in the customer's PDF.
+    {
+      name: "saving_year_one",
+      label: "Saving, year one (reported)",
+      hubspotProperty: "vero_est_saving_year_one",
+      maxLength: 16,
+    },
     { name: "saving_three_year", label: "Saving, three years (reported)", maxLength: 16 },
     { name: "hours_freed_y1", label: "Hours freed, year one (reported)", maxLength: 16 },
     { name: "days_to_live", label: "Days to live (reported)", maxLength: 10 },
@@ -140,5 +178,11 @@ export const veroCostEstimator: MagnetConfig = {
   hubspot: {
     lifecycleStage: "lead",
     source: "vero-cost-estimator",
+    // The portal already had a `vero_lead_magnet` enumeration from an earlier
+    // ROI calculator. Setting it too keeps this magnet visible to reporting
+    // built on that taxonomy, alongside our own `lead_magnet_source`.
+    properties: {
+      vero_lead_magnet: "Vero Cost Estimator",
+    },
   },
 };
