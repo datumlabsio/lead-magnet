@@ -88,7 +88,7 @@ ${inner}
     </td></tr>
     <tr>
       <td style="background:#171717;border-radius:0 0 12px 12px;padding:20px 32px;text-align:center;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;line-height:1.5;color:#fffcf7;">
-        Datum Labs, Office # 1 - Sheridan, WY, United States, WY, Sheridan
+        Datum Labs, Office # 1 - Sheridan, WY, United States
       </td>
     </tr>
   </table>
