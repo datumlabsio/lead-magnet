@@ -103,7 +103,7 @@ export function buildReportData(estimate: Estimate, contact: ReportContact): Tem
   });
 
   return {
-    report_title: `Vero cost estimate for ${contact.company}`,
+    report_title: `Vero cost estimate for ${contact.firstName} ${contact.lastName}`,
     meta_line: `Prepared for ${contact.firstName} ${contact.lastName}, ${contact.company} · ${date}`,
     hero_kicker: positive ? "Estimated year-one saving" : "Estimated year-one difference",
     // The hero sits on near-black, so these are the on-dark pair from the
@@ -114,7 +114,7 @@ export function buildReportData(estimate: Estimate, contact: ReportContact): Tem
     executive_summary: executiveSummary,
     what_this_means: whatThisMeans,
     inputs_summary: inputsSummary,
-    footer_line: `Prepared by Datum Labs for ${contact.company}. Figures are an estimate based on the inputs above.`,
+    footer_line: `Prepared by Datum Labs for ${contact.firstName} ${contact.lastName}. Figures are an estimate based on the inputs above.`,
     metric_cards: metricCards,
     categories,
   };
